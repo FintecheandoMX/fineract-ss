@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -52,6 +53,7 @@ import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class SelfAccountTransferDataValidator {
 
@@ -147,6 +149,7 @@ public class SelfAccountTransferDataValidator {
 
         Collection<SelfAccountTemplateData> validToAccounts = validFromAccounts;
         if (type.equals("tpt")) {
+            log.info("is TPT ");
             validToAccounts = this.tptBeneficiaryReadPlatformService.retrieveTPTSelfAccountTemplateData(user);
         }
 
