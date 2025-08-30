@@ -30,10 +30,10 @@ import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.dataqueries.data.DataTableValidator;
+import org.apache.fineract.infrastructure.dataqueries.service.DatatableReadService;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksReadService;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
 import org.apache.fineract.infrastructure.dataqueries.service.GenericDataService;
-import org.apache.fineract.infrastructure.dataqueries.service.ReadWriteNonCoreDataService;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -124,6 +124,8 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPosti
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingServiceImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformServiceImpl;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadPlatformService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
@@ -152,7 +154,7 @@ public class SavingsConfiguration {
     @Bean
     @ConditionalOnMissingBean(SavingsAccountTransactionSearchService.class)
     public SavingsAccountTransactionSearchService savingsAccountTransactionSearchService(PlatformSecurityContext context,
-            GenericDataService genericDataService, DatabaseSpecificSQLGenerator sqlGenerator, ReadWriteNonCoreDataService datatableService,
+            GenericDataService genericDataService, DatabaseSpecificSQLGenerator sqlGenerator, DatatableReadService datatableService,
             DataTableValidator dataTableValidator, JdbcTemplate jdbcTemplate, SearchUtil searchUtil) {
         return new SavingsAccountTransactionsSearchServiceImpl(context, genericDataService, sqlGenerator, datatableService,
                 dataTableValidator, jdbcTemplate, searchUtil);
@@ -335,16 +337,23 @@ public class SavingsConfiguration {
     @Bean
     @ConditionalOnMissingBean(SavingsAccountReadPlatformService.class)
     public SavingsAccountReadPlatformService savingsAccountReadPlatformService(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
-            ClientReadPlatformService clientReadPlatformService, GroupReadPlatformService groupReadPlatformService,
-            SavingsProductReadPlatformService savingProductReadPlatformService, StaffReadPlatformService staffReadPlatformService,
-            SavingsDropdownReadPlatformService dropdownReadPlatformService, ChargeReadPlatformService chargeReadPlatformService,
-            EntityDatatableChecksReadService entityDatatableChecksReadService, ColumnValidator columnValidator,
             SavingsAccountAssembler savingAccountAssembler, PaginationHelper paginationHelper, DatabaseSpecificSQLGenerator sqlGenerator,
-            SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper) {
-        return new SavingsAccountReadPlatformServiceImpl(context, jdbcTemplate, clientReadPlatformService, groupReadPlatformService,
+            SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper, ColumnValidator columnValidator) {
+        return new SavingsAccountReadPlatformServiceImpl(context, jdbcTemplate, savingAccountAssembler, paginationHelper, columnValidator,
+                sqlGenerator, savingsAccountRepositoryWrapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(SavingsAccountTemplateReadPlatformService.class)
+    public SavingsAccountTemplateReadPlatformService savingsAccountTemplateReadPlatformService(PlatformSecurityContext context,
+            JdbcTemplate jdbcTemplate, ClientReadPlatformService clientReadPlatformService,
+            GroupReadPlatformService groupReadPlatformService, SavingsProductReadPlatformService savingProductReadPlatformService,
+            StaffReadPlatformService staffReadPlatformService, SavingsDropdownReadPlatformService dropdownReadPlatformService,
+            ChargeReadPlatformService chargeReadPlatformService, EntityDatatableChecksReadService entityDatatableChecksReadService,
+            ColumnValidator columnValidator) {
+        return new SavingsAccountTemplateReadPlatformServiceImpl(context, jdbcTemplate, clientReadPlatformService, groupReadPlatformService,
                 savingProductReadPlatformService, staffReadPlatformService, dropdownReadPlatformService, chargeReadPlatformService,
-                entityDatatableChecksReadService, columnValidator, savingAccountAssembler, paginationHelper, sqlGenerator,
-                savingsAccountRepositoryWrapper);
+                entityDatatableChecksReadService, columnValidator);
     }
 
     @Bean

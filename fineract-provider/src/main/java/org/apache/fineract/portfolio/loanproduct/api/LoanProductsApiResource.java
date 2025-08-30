@@ -58,6 +58,7 @@ import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformS
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.core.api.ApiFacingEnum;
 import org.apache.fineract.infrastructure.core.api.ApiParameterHelper;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -72,6 +73,7 @@ import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
+import org.apache.fineract.portfolio.common.domain.DaysInYearCustomStrategyType;
 import org.apache.fineract.portfolio.common.service.DropdownReadPlatformService;
 import org.apache.fineract.portfolio.delinquency.data.DelinquencyBucketData;
 import org.apache.fineract.portfolio.delinquency.service.DelinquencyReadPlatformService;
@@ -80,6 +82,9 @@ import org.apache.fineract.portfolio.floatingrates.service.FloatingRatesReadPlat
 import org.apache.fineract.portfolio.fund.data.FundData;
 import org.apache.fineract.portfolio.fund.service.FundReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeCalculationType;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeStrategy;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeType;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargeOffBehaviour;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleProcessingType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
@@ -126,7 +131,10 @@ public class LoanProductsApiResource {
             LoanApiConstants.fixedPrincipalPercentagePerInstallmentParamName, LoanProductConstants.DUE_DAYS_FOR_REPAYMENT_EVENT,
             LoanProductConstants.OVER_DUE_DAYS_FOR_REPAYMENT_EVENT, LoanProductConstants.ENABLE_DOWN_PAYMENT,
             LoanProductConstants.DISBURSED_AMOUNT_PERCENTAGE_DOWN_PAYMENT, LoanProductConstants.ENABLE_AUTO_REPAYMENT_DOWN_PAYMENT,
-            LoanProductConstants.REPAYMENT_START_DATE_TYPE));
+            LoanProductConstants.REPAYMENT_START_DATE_TYPE, LoanProductConstants.DAYS_IN_YEAR_CUSTOM_STRATEGY_TYPE_PARAMETER_NAME,
+            LoanProductConstants.ENABLE_INCOME_CAPITALIZATION_PARAM_NAME,
+            LoanProductConstants.CAPITALIZED_INCOME_CALCULATION_TYPE_PARAM_NAME,
+            LoanProductConstants.CAPITALIZED_INCOME_STRATEGY_PARAM_NAME, LoanProductConstants.CAPITALIZED_INCOME_TYPE_PARAM_NAME));
 
     private static final Set<String> PRODUCT_MIX_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList("productId", "productName", "restrictedProducts", "allowedProducts", "productOptions"));
@@ -431,11 +439,20 @@ public class LoanProductsApiResource {
         final List<EnumOptionData> advancedPaymentAllocationTypes = PaymentAllocationType.getValuesAsEnumOptionDataList();
         final List<EnumOptionData> creditAllocationTransactionTypes = CreditAllocationTransactionType.getValuesAsEnumOptionDataList();
         final List<EnumOptionData> creditAllocationAllocationTypes = AllocationType.getValuesAsEnumOptionDataList();
-        final List<StringEnumOptionData> supportedInterestRefundTypesOptions = LoanSupportedInterestRefundTypes
-                .getValuesAsStringEnumOptionDataList();
-        final List<StringEnumOptionData> chargeOffBehaviourOptions = LoanChargeOffBehaviour.getValuesAsStringEnumOptionDataList();
+        final List<StringEnumOptionData> supportedInterestRefundTypesOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(LoanSupportedInterestRefundTypes.class);
+        final List<StringEnumOptionData> chargeOffBehaviourOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(LoanChargeOffBehaviour.class);
         final List<CodeValueData> chargeOffReasonOptions = codeValueReadPlatformService
                 .retrieveCodeValuesByCode(LoanApiConstants.CHARGE_OFF_REASONS);
+        final List<StringEnumOptionData> daysInYearCustomStrategyOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(DaysInYearCustomStrategyType.class);
+        final List<StringEnumOptionData> capitalizedIncomeCalculationTypeOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeCalculationType.class);
+        final List<StringEnumOptionData> capitalizedIncomeStrategyOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeStrategy.class);
+        final List<StringEnumOptionData> capitalizedIncomeTypeOptions = ApiFacingEnum
+                .getValuesAsStringEnumOptionDataList(LoanCapitalizedIncomeType.class);
 
         return new LoanProductData(productData, chargeOptions, penaltyOptions, paymentTypeOptions, currencyOptions, amortizationTypeOptions,
                 interestTypeOptions, interestCalculationPeriodTypeOptions, repaymentFrequencyTypeOptions, interestRateFrequencyTypeOptions,
@@ -447,7 +464,9 @@ public class LoanProductsApiResource {
                 advancedPaymentAllocationTransactionTypes, advancedPaymentAllocationFutureInstallmentAllocationRules,
                 advancedPaymentAllocationTypes, LoanScheduleType.getValuesAsEnumOptionDataList(),
                 LoanScheduleProcessingType.getValuesAsEnumOptionDataList(), creditAllocationTransactionTypes,
-                creditAllocationAllocationTypes, supportedInterestRefundTypesOptions, chargeOffBehaviourOptions, chargeOffReasonOptions);
+                creditAllocationAllocationTypes, supportedInterestRefundTypesOptions, chargeOffBehaviourOptions, chargeOffReasonOptions,
+                daysInYearCustomStrategyOptions, capitalizedIncomeCalculationTypeOptions, capitalizedIncomeStrategyOptions,
+                capitalizedIncomeTypeOptions);
     }
 
 }

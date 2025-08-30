@@ -75,6 +75,7 @@ import org.apache.fineract.organisation.monetary.domain.OrganisationCurrencyRepo
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.portfolio.PortfolioProductType;
+import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeDataDTO;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -298,6 +299,28 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         return new CommandProcessingResultBuilder().withTransactionId(reversalTransactionId).build();
     }
 
+    @Override
+    public void createJournalEntryForReversedLoanTransaction(final LocalDate transactionDate, final String loanTransactionId,
+            final Long officeId) {
+        final GLClosure latestGLClosure = this.helper.getLatestClosureByBranch(officeId);
+        this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+        final String transactionId = AccountingProcessorHelper.LOAN_TRANSACTION_IDENTIFIER + loanTransactionId;
+        final List<JournalEntry> journalEntries = this.glJournalEntryRepository.findJournalEntries(transactionId,
+                PortfolioProductType.LOAN.getValue());
+        if (journalEntries == null || journalEntries.isEmpty()) {
+            return;
+        }
+        for (final JournalEntry journalEntry : journalEntries) {
+            final JournalEntry reversalJournalEntry = JournalEntry.createNew(journalEntry.getOffice(), journalEntry.getPaymentDetail(),
+                    journalEntry.getGlAccount(), journalEntry.getCurrencyCode(), transactionId, Boolean.FALSE, transactionDate,
+                    journalEntry.isDebitEntry() ? JournalEntryType.CREDIT : JournalEntryType.DEBIT, journalEntry.getAmount(),
+                    journalEntry.getDescription(), journalEntry.getEntityType(), journalEntry.getEntityId(),
+                    journalEntry.getReferenceNumber(), journalEntry.getLoanTransactionId(), journalEntry.getSavingsTransactionId(),
+                    journalEntry.getClientTransactionId(), journalEntry.getShareTransactionId());
+            helper.persistJournalEntry(reversalJournalEntry);
+        }
+    }
+
     public String revertJournalEntry(final List<JournalEntry> journalEntries, String reversalComment) {
         final Long officeId = journalEntries.get(0).getOffice().getId();
         final String reversalTransactionId = generateTransactionId(officeId);
@@ -458,15 +481,13 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
     @Transactional
     @Override
-    public void createJournalEntriesForLoan(final Map<String, Object> accountingBridgeData) {
-
-        final boolean cashBasedAccountingEnabled = (Boolean) accountingBridgeData.get("cashBasedAccountingEnabled");
-        final boolean upfrontAccrualBasedAccountingEnabled = (Boolean) accountingBridgeData.get("upfrontAccrualBasedAccountingEnabled");
-        final boolean periodicAccrualBasedAccountingEnabled = (Boolean) accountingBridgeData.get("periodicAccrualBasedAccountingEnabled");
+    public void createJournalEntriesForLoan(final AccountingBridgeDataDTO accountingBridgeData) {
+        final boolean cashBasedAccountingEnabled = accountingBridgeData.isCashBasedAccountingEnabled();
+        final boolean upfrontAccrualBasedAccountingEnabled = accountingBridgeData.isUpfrontAccrualBasedAccountingEnabled();
+        final boolean periodicAccrualBasedAccountingEnabled = accountingBridgeData.isPeriodicAccrualBasedAccountingEnabled();
 
         if (cashBasedAccountingEnabled || upfrontAccrualBasedAccountingEnabled || periodicAccrualBasedAccountingEnabled) {
-            final LoanDTO loanDTO = this.helper.populateLoanDtoFromMap(accountingBridgeData, cashBasedAccountingEnabled,
-                    upfrontAccrualBasedAccountingEnabled, periodicAccrualBasedAccountingEnabled);
+            final LoanDTO loanDTO = this.helper.populateLoanDtoFromDTO(accountingBridgeData);
             final AccountingProcessorForLoan accountingProcessorForLoan = this.accountingProcessorForLoanFactory
                     .determineProcessor(loanDTO);
             accountingProcessorForLoan.createJournalEntriesForLoan(loanDTO);

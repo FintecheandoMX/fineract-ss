@@ -49,10 +49,12 @@ import java.util.Set;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.core.domain.ActionContext;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
+import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
+import org.apache.fineract.portfolio.loanaccount.data.TransactionChangeData;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
@@ -68,6 +70,11 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.MoneyHolder;
 import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.TransactionCtx;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleProcessingType;
+import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
+import org.apache.fineract.portfolio.loanaccount.service.InterestRefundService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
+import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
+import org.apache.fineract.portfolio.loanaccount.service.schedule.LoanScheduleComponent;
 import org.apache.fineract.portfolio.loanproduct.calc.EMICalculator;
 import org.apache.fineract.portfolio.loanproduct.calc.data.ProgressiveLoanInterestScheduleModel;
 import org.apache.fineract.portfolio.loanproduct.domain.AllocationType;
@@ -96,7 +103,6 @@ class AdvancedPaymentScheduleTransactionProcessorTest {
     private static final MockedStatic<MoneyHelper> MONEY_HELPER = mockStatic(MoneyHelper.class);
     private AdvancedPaymentScheduleTransactionProcessor underTest;
     private static final EMICalculator emiCalculator = Mockito.mock(EMICalculator.class);
-    private static final LoanRepositoryWrapper loanRepositoryWrapper = Mockito.mock(LoanRepositoryWrapper.class);
 
     @BeforeAll
     public static void init() {
@@ -111,7 +117,10 @@ class AdvancedPaymentScheduleTransactionProcessorTest {
 
     @BeforeEach
     public void setUp() {
-        underTest = new AdvancedPaymentScheduleTransactionProcessor(emiCalculator, loanRepositoryWrapper, null, null, null);
+        underTest = new AdvancedPaymentScheduleTransactionProcessor(emiCalculator, Mockito.mock(LoanRepositoryWrapper.class),
+                Mockito.mock(InterestRefundService.class), Mockito.mock(ExternalIdFactory.class), Mockito.mock(LoanScheduleComponent.class),
+                Mockito.mock(LoanTransactionService.class), Mockito.mock(LoanChargeValidator.class),
+                Mockito.mock(LoanBalanceService.class));
 
         ThreadLocalContextUtil.setTenant(new FineractPlatformTenant(1L, "default", "Default", "Asia/Kolkata", null));
         ThreadLocalContextUtil.setActionContext(ActionContext.DEFAULT);
@@ -658,11 +667,14 @@ class AdvancedPaymentScheduleTransactionProcessorTest {
         when(relation.getRelationType()).thenReturn(LoanTransactionRelationTypeEnum.CHARGEBACK);
         when(repayment2.getLoanTransactionRelations()).thenReturn(Set.of(relation));
 
-        TransactionCtx ctx = mock(TransactionCtx.class);
+        Loan loan = mock(Loan.class);
+        when(chargebackReplayed.getLoan()).thenReturn(loan);
+        when(loan.getLoanTransactions()).thenReturn(List.of(repayment1, repayment2));
+        TransactionChangeData transactionChange = new TransactionChangeData(originalChargeback, chargebackReplayed);
         ChangedTransactionDetail changedTransactionDetail = mock(ChangedTransactionDetail.class);
+        when(changedTransactionDetail.getTransactionChanges()).thenReturn(List.of(transactionChange));
+        TransactionCtx ctx = mock(TransactionCtx.class);
         when(ctx.getChangedTransactionDetail()).thenReturn(changedTransactionDetail);
-        when(changedTransactionDetail.getCurrentTransactionToOldId()).thenReturn(Map.of(chargebackReplayed, 123L));
-        when(changedTransactionDetail.getNewTransactionMappings()).thenReturn(Map.of(122L, repayment1, 121L, repayment2));
 
         // when
         LoanTransaction originalTransaction = underTest.findChargebackOriginalTransaction(chargebackReplayed, ctx);
@@ -692,8 +704,8 @@ class AdvancedPaymentScheduleTransactionProcessorTest {
         TransactionCtx ctx = mock(TransactionCtx.class);
         ChangedTransactionDetail changedTransactionDetail = mock(ChangedTransactionDetail.class);
         when(ctx.getChangedTransactionDetail()).thenReturn(changedTransactionDetail);
-        when(changedTransactionDetail.getCurrentTransactionToOldId()).thenReturn(Map.of(chargebackReplayed, 123L));
-        when(changedTransactionDetail.getNewTransactionMappings()).thenReturn(Map.of());
+        when(changedTransactionDetail.getTransactionChanges())
+                .thenReturn(List.of(new TransactionChangeData(originalChargeback, chargebackReplayed)));
 
         // when
         LoanTransaction originalTransaction = underTest.findChargebackOriginalTransaction(chargebackReplayed, ctx);

@@ -21,53 +21,11 @@ package org.apache.fineract.portfolio.delinquency.api;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import org.apache.fineract.portfolio.delinquency.data.DelinquencyRangeData;
 
 public final class DelinquencyApiResourceSwagger {
 
     private DelinquencyApiResourceSwagger() {}
-
-    @Schema(description = "GetDelinquencyRangesResponse")
-    public static final class GetDelinquencyRangesResponse {
-
-        private GetDelinquencyRangesResponse() {}
-
-        @Schema(example = "1")
-        public Long id;
-        @Schema(example = "Delinquent 1")
-        public String classification;
-        @Schema(example = "1")
-        public Integer minimumAgeDays;
-        @Schema(example = "3")
-        public Integer maximumAgeDays;
-    }
-
-    @Schema(description = "GetDelinquencyBucketsResponse")
-    public static final class GetDelinquencyBucketsResponse {
-
-        private GetDelinquencyBucketsResponse() {}
-
-        @Schema(example = "1")
-        public Long id;
-        @Schema(example = "Delinquent Bucket Set 1")
-        public String name;
-
-        public GetDelinquencyRangesResponse[] ranges;
-    }
-
-    @Schema(description = "PostDelinquencyRangeRequest")
-    public static final class PostDelinquencyRangeRequest {
-
-        private PostDelinquencyRangeRequest() {}
-
-        @Schema(example = "Delinquent 1")
-        public String classification;
-        @Schema(example = "1")
-        public Integer minimumAgeDays;
-        @Schema(example = "3")
-        public Integer maximumAgeDays;
-        @Schema(example = "en")
-        public String locale;
-    }
 
     @Schema(description = "PostDelinquencyRangeResponse")
     public static final class PostDelinquencyRangeResponse {
@@ -75,7 +33,7 @@ public final class DelinquencyApiResourceSwagger {
         private PostDelinquencyRangeResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
+        public Long resourceId;
     }
 
     @Schema(description = "PutDelinquencyRangeResponse")
@@ -84,8 +42,8 @@ public final class DelinquencyApiResourceSwagger {
         private PutDelinquencyRangeResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
-        public PostDelinquencyRangeRequest changes;
+        public Long resourceId;
+        public DelinquencyRangeRequest changes;
     }
 
     @Schema(description = "DeleteDelinquencyRangeResponse")
@@ -94,18 +52,7 @@ public final class DelinquencyApiResourceSwagger {
         private DeleteDelinquencyRangeResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
-    }
-
-    @Schema(description = "PostDelinquencyBucketRequest")
-    public static final class PostDelinquencyBucketRequest {
-
-        private PostDelinquencyBucketRequest() {}
-
-        @Schema(example = "Delinquent 1")
-        public String name;
-        @Schema(example = "[1,2,3]")
-        public Long[] ranges;
+        public Long resourceId;
     }
 
     @Schema(description = "PostDelinquencyBucketResponse")
@@ -114,7 +61,7 @@ public final class DelinquencyApiResourceSwagger {
         private PostDelinquencyBucketResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
+        public Long resourceId;
     }
 
     @Schema(description = "PutDelinquencyBucketResponse")
@@ -123,7 +70,7 @@ public final class DelinquencyApiResourceSwagger {
         private PutDelinquencyBucketResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
+        public Long resourceId;
     }
 
     @Schema(description = "DeleteDelinquencyBucketResponse")
@@ -132,7 +79,7 @@ public final class DelinquencyApiResourceSwagger {
         private DeleteDelinquencyBucketResponse() {}
 
         @Schema(example = "1")
-        public Integer resourceId;
+        public Long resourceId;
     }
 
     @Schema(description = "GetDelinquencyTagHistoryResponse")
@@ -144,7 +91,7 @@ public final class DelinquencyApiResourceSwagger {
         public Long id;
         @Schema(example = "10")
         public Long loanId;
-        public GetDelinquencyRangesResponse delinquencyRange;
+        public DelinquencyRangeData delinquencyRange;
         @Schema(example = "2013,1,2")
         public LocalDate addedOnDate;
         @Schema(example = "2013,2,20")

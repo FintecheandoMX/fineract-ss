@@ -31,6 +31,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.apache.fineract.infrastructure.core.serialization.gson.JsonExclude;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.portfolio.util.Memo;
@@ -39,6 +40,7 @@ import org.apache.fineract.portfolio.util.Memo;
 @EqualsAndHashCode(exclude = { "previous" })
 public final class RepaymentPeriod {
 
+    @JsonExclude
     private final RepaymentPeriod previous;
     @Getter
     private final LocalDate fromDate;
@@ -59,11 +61,16 @@ public final class RepaymentPeriod {
     @Getter
     private Money paidInterest;
 
+    @JsonExclude
     private final MathContext mc;
 
+    @JsonExclude
     private Memo<BigDecimal> rateFactorPlus1Calculation;
+    @JsonExclude
     private Memo<Money> calculatedDueInterestCalculation;
+    @JsonExclude
     private Memo<Money> dueInterestCalculation;
+    @JsonExclude
     private Memo<Money> outstandingBalanceCalculation;
 
     private RepaymentPeriod(RepaymentPeriod previous, LocalDate fromDate, LocalDate dueDate, List<InterestPeriod> interestPeriods,
@@ -77,6 +84,10 @@ public final class RepaymentPeriod {
         this.paidPrincipal = paidPrincipal;
         this.paidInterest = paidInterest;
         this.mc = mc;
+    }
+
+    public static RepaymentPeriod empty(RepaymentPeriod previous, MathContext mc) {
+        return new RepaymentPeriod(previous, null, null, new ArrayList<>(), null, null, null, null, mc);
     }
 
     public static RepaymentPeriod create(RepaymentPeriod previous, LocalDate fromDate, LocalDate dueDate, Money emi, MathContext mc) {
@@ -94,7 +105,7 @@ public final class RepaymentPeriod {
                 repaymentPeriod.paidInterest, mc);
         // There is always at least 1 interest period, by default with same from-due date as repayment period
         for (InterestPeriod interestPeriod : repaymentPeriod.interestPeriods) {
-            newRepaymentPeriod.interestPeriods.add(InterestPeriod.copy(newRepaymentPeriod, interestPeriod));
+            newRepaymentPeriod.interestPeriods.add(InterestPeriod.copy(newRepaymentPeriod, interestPeriod, mc));
         }
         return newRepaymentPeriod;
     }
@@ -135,7 +146,7 @@ public final class RepaymentPeriod {
     }
 
     /**
-     * Gives back calculated due interest + chargeback interest
+     * Gives back calculated due interest + credited interest
      *
      * @return
      */
@@ -154,31 +165,33 @@ public final class RepaymentPeriod {
         if (getPrevious().isPresent()) {
             calculatedDueInterest = calculatedDueInterest.add(getPrevious().get().getUnrecognizedInterest(), mc);
         }
-        return calculatedDueInterest;
+        return MathUtil.negativeToZero(calculatedDueInterest, mc);
     }
 
     /**
-     * Gives back due interest + chargeback interest OR paid interest
+     * Gives back due interest + credited interest OR paid interest
      *
      * @return
      */
     public Money getDueInterest() {
         if (dueInterestCalculation == null) {
             // Due interest might be the maximum paid if there is pay-off or early repayment
-            dueInterestCalculation = Memo.of(() -> MathUtil.max(
-                    getPaidPrincipal().isGreaterThan(getCalculatedDuePrincipal()) ? getPaidInterest() : getCalculatedDueInterest(),
-                    getPaidInterest(), false), () -> new Object[] { paidPrincipal, paidInterest, interestPeriods });
+            dueInterestCalculation = Memo
+                    .of(() -> MathUtil.max(
+                            getPaidPrincipal().isGreaterThan(getCalculatedDuePrincipal()) ? getPaidInterest()
+                                    : MathUtil.min(getCalculatedDueInterest(), getEmiPlusCreditedAmounts(), false),
+                            getPaidInterest(), false), () -> new Object[] { paidPrincipal, paidInterest, interestPeriods });
         }
         return dueInterestCalculation.get();
     }
 
     /**
-     * Gives back an EMI amount which includes chargeback amounts as well
+     * Gives back an EMI amount which includes credited amounts as well
      *
      * @return
      */
-    public Money getEmiPlusChargeback() {
-        return getEmi().plus(getTotalChargebackAmount(), mc); //
+    public Money getEmiPlusCreditedAmounts() {
+        return getEmi().plus(getTotalCreditedAmount(), mc); //
     }
 
     /**
@@ -187,48 +200,49 @@ public final class RepaymentPeriod {
      * @return
      */
     public Money getCalculatedDuePrincipal() {
-        return getEmiPlusChargeback().minus(getCalculatedDueInterest(), mc);
+        return MathUtil.negativeToZero(getEmiPlusCreditedAmounts().minus(getCalculatedDueInterest(), mc), mc);
     }
 
     /**
-     * Sum of chargeback principals
+     * Sum of credited principals
      *
      * @return
      */
-    public Money getChargebackPrincipal() {
-        return interestPeriods.stream() //
-                .map(InterestPeriod::getChargebackPrincipal) //
-                .reduce(getZero(mc), (value, previous) -> value.plus(previous, mc)); //
+    public Money getCreditedPrincipal() {
+        return MathUtil.negativeToZero(interestPeriods.stream() //
+                .map(InterestPeriod::getCreditedPrincipal) //
+                .reduce(getZero(mc), (value, previous) -> value.plus(previous, mc)), mc); //
     }
 
     /**
-     * Sum of chargeback interests
+     * Sum of credited interests
      *
      * @return
      */
-    public Money getChargebackInterest() {
-        return interestPeriods.stream() //
-                .map(InterestPeriod::getChargebackInterest) //
-                .reduce(getZero(mc), (value, previous) -> value.plus(previous, mc)); //
+    public Money getCreditedInterest() {
+        return MathUtil.negativeToZero(interestPeriods.stream() //
+                .map(InterestPeriod::getCreditedInterest) //
+                .reduce(getZero(mc), (value, previous) -> value.plus(previous, mc)), mc); //
     }
 
     /**
-     * Gives back due principal + chargeback principal or paid principal
+     * Gives back due principal + credited principal or paid principal
      *
      * @return
      */
     public Money getDuePrincipal() {
         // Due principal might be the maximum paid if there is pay-off or early repayment
-        return MathUtil.max(getEmiPlusChargeback().minus(getDueInterest(), mc), getPaidPrincipal(), false);
+        return MathUtil.max(MathUtil.negativeToZero(getEmiPlusCreditedAmounts().minus(getDueInterest(), mc), mc), getPaidPrincipal(),
+                false);
     }
 
     /**
-     * Gives back sum of all chargeback principal + chargeback interest
+     * Gives back sum of all credited principal + credited interest
      *
      * @return
      */
-    public Money getTotalChargebackAmount() {
-        return getChargebackPrincipal().plus(getChargebackInterest(), mc);
+    public Money getTotalCreditedAmount() {
+        return getCreditedPrincipal().plus(getCreditedInterest(), mc);
     }
 
     /**
@@ -241,7 +255,7 @@ public final class RepaymentPeriod {
     }
 
     public boolean isFullyPaid() {
-        return getEmi().isEqualTo(getTotalPaidAmount());
+        return getEmiPlusCreditedAmounts().isEqualTo(getTotalPaidAmount());
     }
 
     /**
@@ -317,5 +331,9 @@ public final class RepaymentPeriod {
 
     public boolean isFirstRepaymentPeriod() {
         return previous == null;
+    }
+
+    public Money getOutstandingPrincipal() {
+        return MathUtil.negativeToZero(getDuePrincipal().minus(getPaidPrincipal()), mc);
     }
 }

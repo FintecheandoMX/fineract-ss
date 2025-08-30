@@ -18,11 +18,8 @@
  */
 package org.apache.fineract.infrastructure.event.external.service.serialization.serializer.loan;
 
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.avro.generic.GenericContainer;
 import org.apache.commons.collections4.CollectionUtils;
@@ -32,6 +29,7 @@ import org.apache.fineract.avro.loan.v1.LoanInstallmentDelinquencyBucketDataV1;
 import org.apache.fineract.infrastructure.event.business.domain.BusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanBusinessEvent;
 import org.apache.fineract.infrastructure.event.external.service.serialization.mapper.loan.LoanAccountDataMapper;
+import org.apache.fineract.infrastructure.event.external.service.serialization.serializer.AbstractBusinessEventWithCustomDataSerializer;
 import org.apache.fineract.infrastructure.event.external.service.serialization.serializer.BusinessEventSerializer;
 import org.apache.fineract.infrastructure.event.external.service.serialization.serializer.ExternalEventCustomDataSerializer;
 import org.apache.fineract.portfolio.delinquency.service.DelinquencyReadPlatformService;
@@ -50,7 +48,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class LoanBusinessEventSerializer implements BusinessEventSerializer {
+public class LoanBusinessEventSerializer extends AbstractBusinessEventWithCustomDataSerializer<LoanBusinessEvent>
+        implements BusinessEventSerializer {
 
     private final LoanReadPlatformService service;
     private final LoanAccountDataMapper mapper;
@@ -116,9 +115,8 @@ public class LoanBusinessEventSerializer implements BusinessEventSerializer {
         return LoanAccountDataV1.class;
     }
 
-    private Map<String, ByteBuffer> collectCustomData(final LoanBusinessEvent event) {
-        return externalEventCustomDataSerializers.stream().collect(Collectors.toMap(ExternalEventCustomDataSerializer::key,
-                serializer -> serializer.serialize(event), (existing, replacement) -> replacement));
+    @Override
+    protected List<ExternalEventCustomDataSerializer<LoanBusinessEvent>> getExternalEventCustomDataSerializers() {
+        return externalEventCustomDataSerializers;
     }
-
 }

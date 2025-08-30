@@ -18,6 +18,8 @@
  */
 package org.apache.fineract.portfolio.loanaccount.data;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
@@ -29,12 +31,16 @@ import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.account.data.AccountTransferData;
 import org.apache.fineract.portfolio.paymentdetail.data.PaymentDetailData;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
+import org.springframework.integration.annotation.Default;
 
 /**
  * Immutable data object representing a loan transaction.
  */
 @Getter
-public class LoanTransactionData {
+public class LoanTransactionData implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private final Long id;
     private final Long loanId;
@@ -210,9 +216,19 @@ public class LoanTransactionData {
                 loanTransactionData.externalId, loanTransactionData.transfer, loanTransactionData.fixedEmiAmount,
                 loanTransactionData.outstandingLoanBalance, loanTransactionData.manuallyReversed, loanTransactionData.loanId,
                 loanTransactionData.externalLoanId);
-
     }
 
+    public static LoanTransactionData templateOnTop(final LoanTransactionData loanTransactionData, final LoanTransactionEnumData typeOf) {
+        return new LoanTransactionData(loanTransactionData.id, loanTransactionData.officeId, loanTransactionData.officeName, typeOf,
+                loanTransactionData.paymentDetailData, loanTransactionData.currency, loanTransactionData.date, loanTransactionData.amount,
+                loanTransactionData.netDisbursalAmount, loanTransactionData.principalPortion, loanTransactionData.interestPortion,
+                loanTransactionData.feeChargesPortion, loanTransactionData.penaltyChargesPortion, loanTransactionData.overpaymentPortion,
+                loanTransactionData.unrecognizedIncomePortion, loanTransactionData.paymentTypeOptions, loanTransactionData.externalId,
+                loanTransactionData.transfer, loanTransactionData.fixedEmiAmount, loanTransactionData.outstandingLoanBalance,
+                loanTransactionData.manuallyReversed, loanTransactionData.loanId, loanTransactionData.externalLoanId);
+    }
+
+    @Default // Default constructor for mapper
     public LoanTransactionData(final Long id, final Long officeId, final String officeName, final LoanTransactionEnumData transactionType,
             final PaymentDetailData paymentDetailData, final CurrencyData currency, final LocalDate date, final BigDecimal amount,
             final BigDecimal netDisbursalAmount, final BigDecimal principalPortion, final BigDecimal interestPortion,
@@ -295,6 +311,36 @@ public class LoanTransactionData {
         this(id, externalLoanId, null, null, transactionType, null, null, date, totalAmount, netDisbursalAmount, principalPortion,
                 interestPortion, feeChargesPortion, penaltyChargesPortion, overpaymentPortion, unrecognizedIncomePortion, null, externalId,
                 null, null, outstandingLoanBalance, null, manuallyReversed, ExternalId.empty(), null, loanId);
+    }
+
+    public static LoanTransactionData loanTransactionDataForCreditTemplate(final LoanTransactionEnumData transactionType,
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final Collection<PaymentTypeData> paymentOptions,
+            final CurrencyData currency) {
+        final Long id = null;
+        final Long loanId = null;
+        final ExternalId externalLoanId = ExternalId.empty();
+        final ExternalId externalId = ExternalId.empty();
+        final Long officeId = null;
+        final String officeName = null;
+        final PaymentDetailData paymentDetailData = null;
+        final BigDecimal unrecognizedIncomePortion = null;
+        final BigDecimal principalPortion = null;
+        final BigDecimal interestPortion = null;
+        final BigDecimal feeChargesPortion = null;
+        final BigDecimal penaltyChargesPortion = null;
+        final BigDecimal overpaymentPortion = null;
+        final BigDecimal netDisbursalAmount = null;
+        final BigDecimal fixedEmiAmount = null;
+        final BigDecimal outstandingLoanBalance = null;
+        final AccountTransferData transfer = null;
+        final LocalDate submittedOnDate = null;
+        final LocalDate possibleNextRepaymentDate = null;
+        final boolean manuallyReversed = false;
+        return new LoanTransactionData(id, officeId, officeName, transactionType, paymentDetailData, currency, transactionDate,
+                transactionAmount, netDisbursalAmount, principalPortion, interestPortion, feeChargesPortion, penaltyChargesPortion,
+                overpaymentPortion, unrecognizedIncomePortion, paymentOptions, transfer, externalId, fixedEmiAmount, outstandingLoanBalance,
+                submittedOnDate, manuallyReversed, possibleNextRepaymentDate, loanId, externalLoanId);
+
     }
 
     public static LoanTransactionData loanTransactionDataForDisbursalTemplate(final LoanTransactionEnumData transactionType,

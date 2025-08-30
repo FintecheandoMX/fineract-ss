@@ -81,6 +81,7 @@ public interface LoanProductConstants {
     // Interest recalculation related
     String IS_INTEREST_RECALCULATION_ENABLED_PARAMETER_NAME = "isInterestRecalculationEnabled";
     String DAYS_IN_YEAR_TYPE_PARAMETER_NAME = "daysInYearType";
+    String DAYS_IN_YEAR_CUSTOM_STRATEGY_TYPE_PARAMETER_NAME = "daysInYearCustomStrategy";
     String DAYS_IN_MONTH_TYPE_PARAMETER_NAME = "daysInMonthType";
     String interestRecalculationCompoundingMethodParameterName = "interestRecalculationCompoundingMethod";
     String rescheduleStrategyMethodParameterName = "rescheduleStrategyMethod";
@@ -170,4 +171,10 @@ public interface LoanProductConstants {
     String CHARGE_OFF_BEHAVIOUR = "chargeOffBehaviour";
 
     String INTEREST_RECOGNITION_ON_DISBURSEMENT_DATE = "interestRecognitionOnDisbursementDate";
+
+    // Capitalized income
+    String ENABLE_INCOME_CAPITALIZATION_PARAM_NAME = "enableIncomeCapitalization";
+    String CAPITALIZED_INCOME_CALCULATION_TYPE_PARAM_NAME = "capitalizedIncomeCalculationType";
+    String CAPITALIZED_INCOME_STRATEGY_PARAM_NAME = "capitalizedIncomeStrategy";
+    String CAPITALIZED_INCOME_TYPE_PARAM_NAME = "capitalizedIncomeType";
 }

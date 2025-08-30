@@ -79,6 +79,7 @@ import org.apache.fineract.client.services.GroupsApi;
 import org.apache.fineract.client.services.HolidaysApi;
 import org.apache.fineract.client.services.HooksApi;
 import org.apache.fineract.client.services.ImagesApi;
+import org.apache.fineract.client.services.InlineJobApi;
 import org.apache.fineract.client.services.InterestRateChartApi;
 import org.apache.fineract.client.services.InterestRateSlabAKAInterestBandsApi;
 import org.apache.fineract.client.services.JournalEntriesApi;
@@ -107,6 +108,7 @@ import org.apache.fineract.client.services.PaymentTypeApi;
 import org.apache.fineract.client.services.PeriodicAccrualAccountingApi;
 import org.apache.fineract.client.services.PermissionsApi;
 import org.apache.fineract.client.services.PocketApi;
+import org.apache.fineract.client.services.ProgressiveLoanApi;
 import org.apache.fineract.client.services.ProvisioningCategoryApi;
 import org.apache.fineract.client.services.ProvisioningCriteriaApi;
 import org.apache.fineract.client.services.ProvisioningEntriesApi;
@@ -294,10 +296,12 @@ public final class FineractClient {
     public final UsersApi users;
     public final WorkingDaysApi workingDays;
     public final LoanInterestPauseApi loanInterestPauseApi;
+    public final ProgressiveLoanApi progressiveLoanApi;
 
     public final ExternalAssetOwnersApi externalAssetOwners;
     public final ExternalAssetOwnerLoanProductAttributesApi externalAssetOwnerLoanProductAttributes;
     public final LoanAccountLockApi loanAccountLockApi;
+    public final InlineJobApi inlineJobApi;
 
     private FineractClient(OkHttpClient okHttpClient, Retrofit retrofit) {
         this.okHttpClient = okHttpClient;
@@ -421,6 +425,8 @@ public final class FineractClient {
         users = retrofit.create(UsersApi.class);
         workingDays = retrofit.create(WorkingDaysApi.class);
         loanInterestPauseApi = retrofit.create(LoanInterestPauseApi.class);
+        progressiveLoanApi = retrofit.create(ProgressiveLoanApi.class);
+        inlineJobApi = retrofit.create(InlineJobApi.class);
     }
 
     public static Builder builder() {

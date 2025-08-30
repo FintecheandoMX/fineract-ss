@@ -22,12 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.fineract.client.models.GlobalConfigurationPropertyData;
 import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.client.models.PutGlobalConfigurationsResponse;
 import org.apache.fineract.client.services.GlobalConfigurationApi;
+import org.apache.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import retrofit2.Response;
 
@@ -73,5 +73,11 @@ public class GlobalConfigurationHelper {
         Response<GlobalConfigurationPropertyData> updatedConfiguration = globalConfigurationApi.retrieveOneByName(configKey).execute();
         boolean isEnabled = BooleanUtils.toBoolean(updatedConfiguration.body().getEnabled());
         assertThat(isEnabled).isEqualTo(true);
+    }
+
+    public GlobalConfigurationPropertyData getGlobalConfiguration(String configKey) throws IOException {
+        Response<GlobalConfigurationPropertyData> configuration = globalConfigurationApi.retrieveOneByName(configKey).execute();
+        ErrorHelper.checkSuccessfulApiCall(configuration);
+        return configuration.body();
     }
 }

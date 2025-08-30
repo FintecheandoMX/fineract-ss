@@ -26,6 +26,8 @@ public interface NoteWritePlatformService {
 
     CommandProcessingResult createNote(JsonCommand command);
 
+    void createLoanNote(Long loanId, String note);
+
     CommandProcessingResult updateNote(JsonCommand command);
 
     CommandProcessingResult deleteNote(JsonCommand command);

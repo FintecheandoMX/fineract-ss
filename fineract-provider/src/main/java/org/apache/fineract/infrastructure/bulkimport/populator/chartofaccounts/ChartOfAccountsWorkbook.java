@@ -189,10 +189,6 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
                 writeFormula(ChartOfAcountsConstants.TAG_ID_COL, row,
                         "IF(ISERROR(VLOOKUP($H" + (rowNo + 1) + ",$V$2:$W$" + (glAccounts.size() + 1) + ",2,FALSE))," + "\"\",(VLOOKUP($H"
                                 + (rowNo + 1) + ",$V$2:$W$" + (glAccounts.size() + 1) + ",2,FALSE)))");
-                // auto populate office id for bulk import of opening balance
-                writeFormula(ChartOfAcountsConstants.OFFICE_COL_ID, row,
-                        "IF(ISERROR(VLOOKUP($K" + (rowNo + 1) + ",$X$2:$Y$" + (offices.size() + 1) + ",2,FALSE)),\"\",(VLOOKUP($K"
-                                + (rowNo + 1) + ",$X$2:$Y$" + (offices.size() + 1) + ",2,FALSE)))");
             }
         } catch (Exception e) {
             LOG.error("Problem occurred in setDefaults function", e);
@@ -221,16 +217,32 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
                         List<String> accountNameAndTagAr = Splitter.on('-').splitToList(accountNameandTag);
                         writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_NAME_COL, row, accountNameAndTagAr.get(0));
                         writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_ID_COL, row, accountNameAndTagAr.get(1));
-                        writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, accountNameAndTagAr.get(2));
-                        writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, accountNameAndTagAr.get(3));
+                        if (accountNameAndTagAr.get(2).equals("null")) {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, "");
+                        } else {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, accountNameAndTagAr.get(2));
+                        }
+                        if (accountNameAndTagAr.get(3).equals("0")) {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, "");
+                        } else {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, accountNameAndTagAr.get(3));
+                        }
                         rowIndex++;
                     } else {
                         row = chartOfAccountsSheet.createRow(rowIndex);
                         List<String> accountNameAndTagAr = Splitter.on('-').splitToList(accountNameandTag);
                         writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_NAME_COL, row, accountNameAndTagAr.get(0));
                         writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_ID_COL, row, accountNameAndTagAr.get(1));
-                        writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, accountNameAndTagAr.get(2));
-                        writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, accountNameAndTagAr.get(3));
+                        if (accountNameAndTagAr.get(2).equals("null")) {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, "");
+                        } else {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, row, accountNameAndTagAr.get(2));
+                        }
+                        if (accountNameAndTagAr.get(3).equals("0")) {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, "");
+                        } else {
+                            writeString(ChartOfAcountsConstants.LOOKUP_TAG_ID_COL, row, accountNameAndTagAr.get(3));
+                        }
                         rowIndex++;
                     }
                 }
@@ -300,12 +312,6 @@ public class ChartOfAccountsWorkbook extends AbstractWorkbookPopulator {
         writeString(ChartOfAcountsConstants.TAG_COL, rowHeader, "Tag");
         writeString(ChartOfAcountsConstants.TAG_ID_COL, rowHeader, "Tag Id");
         writeString(ChartOfAcountsConstants.DESCRIPTION_COL, rowHeader, "Description *");
-        // adding data for opening balance bulk import
-        writeString(ChartOfAcountsConstants.OFFICE_COL, rowHeader, "Parent Office for Opening Balance");
-        writeString(ChartOfAcountsConstants.OFFICE_COL_ID, rowHeader, "Parent Office Code Opening Balance");
-        writeString(ChartOfAcountsConstants.CURRENCY_CODE, rowHeader, "Currency Code");
-        writeString(ChartOfAcountsConstants.DEBIT_AMOUNT, rowHeader, "Debit Amount");
-        writeString(ChartOfAcountsConstants.CREDIT_AMOUNT, rowHeader, "Credit Amount");
 
         writeString(ChartOfAcountsConstants.LOOKUP_ACCOUNT_TYPE_COL, rowHeader, "Lookup Account type");
         writeString(ChartOfAcountsConstants.LOOKUP_TAG_COL, rowHeader, "Lookup Tag");

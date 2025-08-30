@@ -18,14 +18,13 @@
  */
 package org.apache.fineract.portfolio.loanaccount.service;
 
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanAdjustTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.portfolio.loanaccount.data.TransactionChangeData;
 import org.apache.fineract.portfolio.loanaccount.domain.ChangedTransactionDetail;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
-import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 
 @RequiredArgsConstructor
 public class ReplayedTransactionBusinessEventServiceImpl implements ReplayedTransactionBusinessEventService {
@@ -35,18 +34,22 @@ public class ReplayedTransactionBusinessEventServiceImpl implements ReplayedTran
 
     @Override
     public void raiseTransactionReplayedEvents(final ChangedTransactionDetail changedTransactionDetail) {
-        if (changedTransactionDetail == null || changedTransactionDetail.getNewTransactionMappings().isEmpty()) {
+        if (changedTransactionDetail == null || changedTransactionDetail.getTransactionChanges().isEmpty()) {
             return;
         }
         // Extra safety net to avoid event leaking
         try {
             businessEventNotifierService.startExternalEventRecording();
-            for (Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
-                LoanTransaction oldTransaction = loanTransactionRepository.findById(mapEntry.getKey())
-                        .orElseThrow(() -> new LoanTransactionNotFoundException(mapEntry.getKey()));
-                LoanAdjustTransactionBusinessEvent.Data data = new LoanAdjustTransactionBusinessEvent.Data(oldTransaction);
-                data.setNewTransactionDetail(mapEntry.getValue());
-                businessEventNotifierService.notifyPostBusinessEvent(new LoanAdjustTransactionBusinessEvent(data));
+
+            for (TransactionChangeData change : changedTransactionDetail.getTransactionChanges()) {
+                final LoanTransaction newTransaction = change.getNewTransaction();
+                final LoanTransaction oldTransaction = change.getOldTransaction();
+
+                if (oldTransaction != null) {
+                    final LoanAdjustTransactionBusinessEvent.Data data = new LoanAdjustTransactionBusinessEvent.Data(oldTransaction);
+                    data.setNewTransactionDetail(newTransaction);
+                    businessEventNotifierService.notifyPostBusinessEvent(new LoanAdjustTransactionBusinessEvent(data));
+                }
             }
             businessEventNotifierService.stopExternalEventRecording();
         } catch (Exception e) {

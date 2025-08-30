@@ -35,7 +35,7 @@ public abstract class CommonLoanSummaryDataProvider implements LoanSummaryDataPr
 
     @Override
     public LoanSummaryData withTransactionAmountsSummary(Loan loan, LoanSummaryData defaultSummaryData, LoanScheduleData repaymentSchedule,
-            Collection<LoanTransactionBalance> loanTransactionBalances) {
+            Collection<? extends LoanTransactionBalance> loanTransactionBalances) {
         final LocalDate businessDate = DateUtils.getBusinessLocalDate();
 
         BigDecimal totalMerchantRefund = BigDecimal.ZERO;
@@ -56,48 +56,44 @@ public abstract class CommonLoanSummaryDataProvider implements LoanSummaryDataPr
         BigDecimal totalUnpaidPayableDueInterest = BigDecimal.ZERO;
         BigDecimal totalUnpaidPayableNotDueInterest = BigDecimal.ZERO;
 
-        totalChargeAdjustment = fetchLoanTransactionBalanceByType(loanTransactionBalances,
-                LoanTransactionType.CHARGE_ADJUSTMENT.getValue());
+        totalChargeAdjustment = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.CHARGE_ADJUSTMENT);
         totalChargeAdjustmentReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.CHARGE_ADJUSTMENT.getValue());
+                LoanTransactionType.CHARGE_ADJUSTMENT);
 
-        totalChargeback = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.CHARGEBACK.getValue());
+        totalChargeback = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.CHARGEBACK);
 
-        totalCreditBalanceRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances,
-                LoanTransactionType.CREDIT_BALANCE_REFUND.getValue());
+        totalCreditBalanceRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.CREDIT_BALANCE_REFUND);
         totalCreditBalanceRefundReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.CREDIT_BALANCE_REFUND.getValue());
+                LoanTransactionType.CREDIT_BALANCE_REFUND);
 
-        totalGoodwillCredit = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.GOODWILL_CREDIT.getValue());
+        totalGoodwillCredit = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.GOODWILL_CREDIT);
         totalGoodwillCreditReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.GOODWILL_CREDIT.getValue());
+                LoanTransactionType.GOODWILL_CREDIT);
 
-        totalInterestRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.INTEREST_REFUND.getValue());
+        totalInterestRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.INTEREST_REFUND);
 
         totalInterestPaymentWaiver = fetchLoanTransactionBalanceByType(loanTransactionBalances,
-                LoanTransactionType.INTEREST_PAYMENT_WAIVER.getValue());
+                LoanTransactionType.INTEREST_PAYMENT_WAIVER);
 
-        totalMerchantRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances,
-                LoanTransactionType.MERCHANT_ISSUED_REFUND.getValue());
+        totalMerchantRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.MERCHANT_ISSUED_REFUND);
         totalMerchantRefundReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.MERCHANT_ISSUED_REFUND.getValue());
+                LoanTransactionType.MERCHANT_ISSUED_REFUND);
 
-        totalPayoutRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.PAYOUT_REFUND.getValue());
-        totalPayoutRefundReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.PAYOUT_REFUND.getValue());
+        totalPayoutRefund = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.PAYOUT_REFUND);
+        totalPayoutRefundReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances, LoanTransactionType.PAYOUT_REFUND);
 
-        totalRepaymentTransaction = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.REPAYMENT.getValue())
-                .add(fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.DOWN_PAYMENT.getValue()));
+        totalRepaymentTransaction = fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.REPAYMENT)
+                .add(fetchLoanTransactionBalanceByType(loanTransactionBalances, LoanTransactionType.DOWN_PAYMENT));
         totalRepaymentTransactionReversed = fetchLoanTransactionBalanceReversedByType(loanTransactionBalances,
-                LoanTransactionType.REPAYMENT.getValue());
+                LoanTransactionType.REPAYMENT);
 
-        if (repaymentSchedule != null) {
+        if (repaymentSchedule != null && defaultSummaryData.getInterestCharged().compareTo(BigDecimal.ZERO) > 0) {
             // Outstanding Interest on Past due installments
             totalUnpaidPayableDueInterest = computeTotalUnpaidPayableDueInterestAmount(repaymentSchedule.getPeriods(), businessDate);
 
             // Accumulated daily interest of the current Installment period
             totalUnpaidPayableNotDueInterest = computeTotalUnpaidPayableNotDueInterestAmountOnActualPeriod(loan,
-                    repaymentSchedule.getPeriods(), businessDate, defaultSummaryData.getCurrency());
+                    repaymentSchedule.getPeriods(), businessDate, defaultSummaryData.getCurrency(), totalUnpaidPayableDueInterest);
         }
 
         return LoanSummaryData.builder().currency(defaultSummaryData.getCurrency())
@@ -141,16 +137,16 @@ public abstract class CommonLoanSummaryDataProvider implements LoanSummaryDataPr
                 .totalUnpaidPayableNotDueInterest(totalUnpaidPayableNotDueInterest).totalInterestRefund(totalInterestRefund).build();
     }
 
-    private static BigDecimal fetchLoanTransactionBalanceByType(final Collection<LoanTransactionBalance> loanTransactionBalances,
-            final Integer transactionType) {
-        final Optional<LoanTransactionBalance> optLoanTransactionBalance = loanTransactionBalances.stream()
+    private static BigDecimal fetchLoanTransactionBalanceByType(final Collection<? extends LoanTransactionBalance> loanTransactionBalances,
+            final LoanTransactionType transactionType) {
+        final Optional<? extends LoanTransactionBalance> optLoanTransactionBalance = loanTransactionBalances.stream()
                 .filter(balance -> balance.getTransactionType().equals(transactionType) && !balance.isReversed()).findFirst();
         return optLoanTransactionBalance.isPresent() ? optLoanTransactionBalance.get().getAmount() : BigDecimal.ZERO;
     }
 
-    private static BigDecimal fetchLoanTransactionBalanceReversedByType(final Collection<LoanTransactionBalance> loanTransactionBalances,
-            final Integer transactionType) {
-        final Optional<LoanTransactionBalance> optLoanTransactionBalance = loanTransactionBalances.stream()
+    private static BigDecimal fetchLoanTransactionBalanceReversedByType(
+            final Collection<? extends LoanTransactionBalance> loanTransactionBalances, final LoanTransactionType transactionType) {
+        final Optional<? extends LoanTransactionBalance> optLoanTransactionBalance = loanTransactionBalances.stream()
                 .filter(balance -> balance.getTransactionType().equals(transactionType) && balance.isReversed()
                         && balance.isManuallyAdjustedOrReversed())
                 .findFirst();

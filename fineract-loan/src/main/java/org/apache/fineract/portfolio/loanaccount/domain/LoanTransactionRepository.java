@@ -38,6 +38,26 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
     Optional<LoanTransaction> findByIdAndLoanId(Long transactionId, Long loanId);
 
     @Query("""
+            SELECT lt FROM LoanTransaction lt
+            WHERE lt.loan.id = :loanId
+            AND lt.typeOf IN :transactionTypes
+            AND lt.id NOT IN :existingTransactionIds
+            AND lt.reversed = false
+            """)
+    List<LoanTransaction> findNewTransactionsByLoanIdAndTypeAndNotInIds(@Param("loanId") Long loanId,
+            @Param("transactionTypes") List<LoanTransactionType> transactionTypes,
+            @Param("existingTransactionIds") List<Long> existingTransactionIds);
+
+    @Query("""
+            SELECT lt FROM LoanTransaction lt
+            WHERE lt.loan.id = :loanId
+            AND lt.typeOf IN :transactionTypes
+            AND lt.reversed = false
+            """)
+    List<LoanTransaction> findNewTransactionsByLoanIdAndType(@Param("loanId") Long loanId,
+            @Param("transactionTypes") List<LoanTransactionType> transactionTypes);
+
+    @Query("""
             SELECT new org.apache.fineract.portfolio.loanaccount.data.LoanScheduleDelinquencyData(
                 lt.loan.id,
                 min(lt.dateOf),
@@ -49,8 +69,8 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
             lt.loan.loanProduct.delinquencyBucket is not null
             GROUP BY lt.loan
             """)
-    Collection<LoanScheduleDelinquencyData> fetchLoanTransactionsByTypeAndLessOrEqualDate(@Param("transactionType") Integer transactionType,
-            @Param("businessDate") LocalDate businessDate);
+    Collection<LoanScheduleDelinquencyData> fetchLoanTransactionsByTypeAndLessOrEqualDate(
+            @Param("transactionType") LoanTransactionType transactionType, @Param("businessDate") LocalDate businessDate);
 
     @Query(FIND_ID_BY_EXTERNAL_ID)
     Long findIdByExternalId(@Param("externalId") ExternalId externalId);
@@ -70,4 +90,47 @@ public interface LoanTransactionRepository extends JpaRepository<LoanTransaction
 
     @Query(FIND_LOAN_ID_BY_ID)
     Optional<Long> findLoanIdById(@Param("id") Long id);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(lt) > 0 THEN false ELSE true END
+            FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.reversed = false
+            AND lt.dateOf > :transactionDate
+            """)
+    boolean isChronologicallyLatest(@Param("transactionDate") LocalDate transactionDate, @Param("loan") Loan loan);
+
+    @Query("""
+            SELECT MAX(lt.dateOf) FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.reversed = false
+            AND lt.typeOf NOT IN (
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CONTRA,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.MARKED_FOR_RESCHEDULING,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.ACCRUAL_ADJUSTMENT,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.APPROVE_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.INITIATE_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.REJECT_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.WITHDRAW_TRANSFER,
+                    org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION
+            )
+            """)
+    Optional<LocalDate> findLastTransactionDateForReprocessing(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT lt.id FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.id IS NOT NULL
+            """)
+    List<Long> findTransactionIdsByLoan(@Param("loan") Loan loan);
+
+    @Query("""
+            SELECT lt.id FROM LoanTransaction lt
+            WHERE lt.loan = :loan
+            AND lt.id IS NOT NULL
+            AND lt.reversed = true
+            """)
+    List<Long> findReversedTransactionIdsByLoan(@Param("loan") Loan loan);
+
 }

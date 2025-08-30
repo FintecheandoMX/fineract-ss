@@ -844,7 +844,7 @@ public class SchedulerJobsTestResults extends IntegrationTest {
         ArrayList<HashMap> repaymentScheduleDataAfter = this.loanTransactionHelper.getLoanRepaymentSchedule(requestSpec, responseSpec,
                 loanID);
 
-        Assertions.assertEquals(0, (Integer) repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
+        Assertions.assertEquals(0, repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
                 "Verifying From Penalty Charges due fot first Repayment after Successful completion of Scheduler Job");
 
     }
@@ -968,7 +968,7 @@ public class SchedulerJobsTestResults extends IntegrationTest {
             GetLoansLoanIdResponse getLoansLoanIdResponse = loanTransactionHelper.getLoan(requestSpec, responseSpec, loanID);
             // First accrual transaction
             assertTrue(getLoansLoanIdResponse.getTransactions().get(1).getType().getAccrual());
-            assertEquals(10.0f, getLoansLoanIdResponse.getTransactions().get(1).getFeeChargesPortion());
+            assertEquals(10.00, Utils.getDoubleValue(getLoansLoanIdResponse.getTransactions().get(1).getFeeChargesPortion()));
             assertEquals(LocalDate.of(2020, 6, 2), getLoansLoanIdResponse.getTransactions().get(1).getDate());
             Long transactionId = getLoansLoanIdResponse.getTransactions().get(1).getId();
 
@@ -1085,7 +1085,7 @@ public class SchedulerJobsTestResults extends IntegrationTest {
             this.schedulerJobHelper.executeAndAwaitJob(jobName);
             List<HashMap> repaymentScheduleDataAfter = this.loanTransactionHelper.getLoanRepaymentSchedule(requestSpec, responseSpec,
                     loanID);
-            Assertions.assertEquals(0, (Integer) repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
+            Assertions.assertEquals(0, repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
                     "Verifying From Penalty Charges due fot first Repayment after Successful completion of Scheduler Job");
 
             LocalDate lastBusinessDateBeforeFastForward = LocalDate.of(2019, 4, 2);
@@ -1153,7 +1153,7 @@ public class SchedulerJobsTestResults extends IntegrationTest {
             this.schedulerJobHelper.executeAndAwaitJob(jobName);
             List<HashMap> repaymentScheduleDataAfter = this.loanTransactionHelper.getLoanRepaymentSchedule(requestSpec, responseSpec,
                     loanID2);
-            Assertions.assertEquals(0, (Integer) repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
+            Assertions.assertEquals(0, repaymentScheduleDataAfter.get(1).get("penaltyChargesDue"),
                     "Verifying From Penalty Charges due fot first Repayment after Successful completion of Scheduler Job");
 
             BusinessDateHelper.updateBusinessDate(requestSpec, responseSpec, BusinessDateType.COB_DATE, LocalDate.of(2020, 5, 3));

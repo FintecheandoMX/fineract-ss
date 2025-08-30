@@ -45,12 +45,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.AllArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
 import org.apache.fineract.infrastructure.core.api.DateParam;
+import org.apache.fineract.infrastructure.core.api.jersey.Pagination;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.DateFormat;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
@@ -64,12 +66,15 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.portfolio.loanaccount.data.LoanRepaymentScheduleInstallmentData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionData;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
+import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTransactionTypeException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.service.LoanChargePaidByReadService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanReadPlatformService;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadPlatformService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/loans")
@@ -85,6 +90,8 @@ public class LoanTransactionsApiResource {
     public static final String REAGE = "reAge";
     public static final String REAMORTIZE = "reAmortize";
     public static final String UNDO_REAMORTIZE = "undoReAmortize";
+    public static final String CAPITALIZED_INCOME = "capitalizedIncome";
+    public static final String CAPITALIZED_INCOME_ADJUSTMENT = "capitalizedIncomeAdjustment";
     private final Set<String> responseDataParameters = new HashSet<>(Arrays.asList("id", "type", "date", "currency", "amount", "externalId",
             LoanApiConstants.REVERSAL_EXTERNAL_ID_PARAMNAME, LoanApiConstants.REVERSED_ON_DATE_PARAMNAME));
 
@@ -120,11 +127,12 @@ public class LoanTransactionsApiResource {
             @QueryParam("command") @Parameter(description = "command") final String commandParam, @Context final UriInfo uriInfo,
             @QueryParam("dateFormat") @Parameter(description = "dateFormat") final String rawDateFormat,
             @QueryParam("transactionDate") @Parameter(description = "transactionDate") final DateParam transactionDateParam,
-            @QueryParam("locale") @Parameter(description = "locale") final String locale) {
+            @QueryParam("locale") @Parameter(description = "locale") final String locale,
+            @QueryParam("transactionId") @Parameter(description = "transactionId") final Long transactionId) {
 
         final DateFormat dateFormat = StringUtils.isBlank(rawDateFormat) ? null : new DateFormat(rawDateFormat);
 
-        return retrieveTransactionTemplate(loanId, null, commandParam, uriInfo, dateFormat, transactionDateParam, locale);
+        return retrieveTransactionTemplate(loanId, null, commandParam, uriInfo, dateFormat, transactionDateParam, locale, transactionId);
     }
 
     @GET
@@ -150,11 +158,13 @@ public class LoanTransactionsApiResource {
             @QueryParam("command") @Parameter(description = "command") final String commandParam, @Context final UriInfo uriInfo,
             @QueryParam("dateFormat") @Parameter(description = "dateFormat") final String rawDateFormat,
             @QueryParam("transactionDate") @Parameter(description = "transactionDate") final DateParam transactionDateParam,
-            @QueryParam("locale") @Parameter(description = "locale") final String locale) {
+            @QueryParam("locale") @Parameter(description = "locale") final String locale,
+            @QueryParam("transactionId") @Parameter(description = "transactionId") final Long transactionId) {
 
         final DateFormat dateFormat = StringUtils.isBlank(rawDateFormat) ? null : new DateFormat(rawDateFormat);
 
-        return retrieveTransactionTemplate(null, loanExternalId, commandParam, uriInfo, dateFormat, transactionDateParam, locale);
+        return retrieveTransactionTemplate(null, loanExternalId, commandParam, uriInfo, dateFormat, transactionDateParam, locale,
+                transactionId);
     }
 
     @GET
@@ -222,6 +232,40 @@ public class LoanTransactionsApiResource {
             @Context final UriInfo uriInfo) {
 
         return retrieveTransaction(null, loanExternalId, null, externalTransactionId, uriInfo);
+    }
+
+    @GET
+    @Path("{loanId}/transactions")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Retrieve Transactions", description = "Retrieves transactions of a loan")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = LoanTransactionsApiResourceSwagger.GetLoansLoanIdTransactionsResponse.class))) })
+    public Page<LoanTransactionData> retrieveTransactionsByLoanId(
+            @PathParam("loanId") @Parameter(description = "loanId", required = true) final Long loanId,
+            @QueryParam("excludedTypes") @Parameter(description = "excludedTypes", in = ParameterIn.QUERY, schema = @Schema(enumAsRef = true)) final List<LoanTransactionApiConstants.TransactionType> excludedTypes,
+            @QueryParam("page") @Parameter(description = "page") final Integer page,
+            @QueryParam("size") @Parameter(description = "size") final Integer size,
+            @QueryParam("sort") @Parameter(description = "sort") final String sort, @Parameter(hidden = true) @Pagination Pageable pageable,
+            @Context final UriInfo uriInfo) {
+        return retrieveTransactions(loanId, null, excludedTypes, pageable, uriInfo);
+    }
+
+    @GET
+    @Path("external-id/{loanExternalId}/transactions")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Retrieve Transactions", description = "Retrieves transactions of a loan")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = LoanTransactionsApiResourceSwagger.GetLoansLoanIdTransactionsResponse.class))) })
+    public Page<LoanTransactionData> retrieveTransactionsByExternalLoanId(
+            @PathParam("loanExternalId") @Parameter(description = "loanId", required = true) final String loanExternalId,
+            @QueryParam("excludedTypes") @Parameter(description = "excludedTypes", in = ParameterIn.QUERY, schema = @Schema(enumAsRef = true)) final List<LoanTransactionApiConstants.TransactionType> excludedTypes,
+            @QueryParam("page") @Parameter(description = "page") final Integer page,
+            @QueryParam("size") @Parameter(description = "size") final Integer size,
+            @QueryParam("sort") @Parameter(description = "sort") final String sort, @Parameter(hidden = true) @Pagination Pageable pageable,
+            @Context final UriInfo uriInfo) {
+        return retrieveTransactions(null, loanExternalId, excludedTypes, pageable, uriInfo);
     }
 
     @POST
@@ -439,6 +483,62 @@ public class LoanTransactionsApiResource {
         return this.toApiJsonSerializer.serialize(settings, transactionData, this.responseDataParameters);
     }
 
+    private Page<LoanTransactionData> retrieveTransactions(final Long loanId, final String loanExternalIdStr,
+            final List<LoanTransactionApiConstants.TransactionType> excludedTypes, Pageable pageable, final UriInfo uriInfo) {
+
+        this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+
+        ExternalId loanExternalId = ExternalIdFactory.produce(loanExternalIdStr);
+        Long resolvedLoanId = getResolvedLoanIdWithExistsCheck(loanId, loanExternalId);
+
+        Set<LoanTransactionType> excludedTransactionTypes = new HashSet<>();
+        if (CollectionUtils.isNotEmpty(excludedTypes)) {
+            excludedTypes.forEach(x -> excludedTransactionTypes.add(transactionTypeFromParam(x)));
+        }
+
+        return loanReadPlatformService.retrieveLoanTransactions(resolvedLoanId, excludedTransactionTypes, pageable);
+    }
+
+    private LoanTransactionType transactionTypeFromParam(LoanTransactionApiConstants.TransactionType transactionTypeParam) {
+        return switch (transactionTypeParam) {
+            case disbursement -> LoanTransactionType.DISBURSEMENT;
+            case repayment -> LoanTransactionType.REPAYMENT;
+            case waiver -> LoanTransactionType.WAIVE_INTEREST;
+            case repaymentAtDisbursement -> LoanTransactionType.REPAYMENT_AT_DISBURSEMENT;
+            case writeOff -> LoanTransactionType.WRITEOFF;
+            case markedForRescheduling -> LoanTransactionType.MARKED_FOR_RESCHEDULING;
+            case recoveryRepayment -> LoanTransactionType.RECOVERY_REPAYMENT;
+            case waiveCharges -> LoanTransactionType.WAIVE_CHARGES;
+            case accrual -> LoanTransactionType.ACCRUAL;
+            case initiateTransfer -> LoanTransactionType.INITIATE_TRANSFER;
+            case approveTransfer -> LoanTransactionType.APPROVE_TRANSFER;
+            case withdrawTransfer -> LoanTransactionType.WITHDRAW_TRANSFER;
+            case rejectTransfer -> LoanTransactionType.REJECT_TRANSFER;
+            case refund -> LoanTransactionType.REFUND;
+            case chargePayment -> LoanTransactionType.CHARGE_PAYMENT;
+            case incomePosting -> LoanTransactionType.INCOME_POSTING;
+            case creditBalanceRefund -> LoanTransactionType.CREDIT_BALANCE_REFUND;
+            case merchantIssuedRefund -> LoanTransactionType.MERCHANT_ISSUED_REFUND;
+            case payoutRefund -> LoanTransactionType.PAYOUT_REFUND;
+            case goodwillCredit -> LoanTransactionType.GOODWILL_CREDIT;
+            case chargeRefund -> LoanTransactionType.CHARGE_REFUND;
+            case chargeback -> LoanTransactionType.CHARGEBACK;
+            case chargeAdjustment -> LoanTransactionType.CHARGE_ADJUSTMENT;
+            case chargeOff -> LoanTransactionType.CHARGE_OFF;
+            case reAge -> LoanTransactionType.REAGE;
+            case reAmortize -> LoanTransactionType.REAMORTIZE;
+            case interestPaymentWaiver -> LoanTransactionType.INTEREST_PAYMENT_WAIVER;
+            case accrualActivity -> LoanTransactionType.ACCRUAL_ACTIVITY;
+            case interestRefund -> LoanTransactionType.INTEREST_REFUND;
+            case accrualAdjustment -> LoanTransactionType.ACCRUAL_ADJUSTMENT;
+            case capitalizedIncome -> LoanTransactionType.CAPITALIZED_INCOME;
+            case capitalizedIncomeAmortization -> LoanTransactionType.CAPITALIZED_INCOME_AMORTIZATION;
+            case capitalizedIncomeAdjustment -> LoanTransactionType.CAPITALIZED_INCOME_ADJUSTMENT;
+            default ->
+                throw new InvalidLoanTransactionTypeException("transaction", transactionTypeParam.name(), "Unknown transaction type");
+        };
+    }
+
     private String executeTransaction(final Long loanId, final String loanExternalIdStr, final String commandParam,
             final String apiRequestBodyAsJson) {
         final CommandWrapperBuilder builder = new CommandWrapperBuilder().withJson(apiRequestBodyAsJson);
@@ -491,6 +591,8 @@ public class LoanTransactionsApiResource {
             commandRequest = builder.reAmortize(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, UNDO_REAMORTIZE)) {
             commandRequest = builder.undoReAmortize(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, CAPITALIZED_INCOME)) {
+            commandRequest = builder.addCapitalizedIncome(resolvedLoanId).build();
         }
 
         if (commandRequest == null) {
@@ -501,7 +603,7 @@ public class LoanTransactionsApiResource {
     }
 
     private String retrieveTransactionTemplate(Long loanId, String loanExternalIdStr, String commandParam, UriInfo uriInfo,
-            DateFormat dateFormat, DateParam transactionDateParam, String locale) {
+            DateFormat dateFormat, DateParam transactionDateParam, String locale, Long transactionId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
         ExternalId loanExternalId = ExternalIdFactory.produce(loanExternalIdStr);
@@ -572,6 +674,12 @@ public class LoanTransactionsApiResource {
             transactionData = this.loanReadPlatformService.retrieveLoanChargeOffTemplate(resolvedLoanId);
         } else if (CommandParameterUtil.is(commandParam, DOWN_PAYMENT)) {
             transactionData = this.loanReadPlatformService.retrieveLoanTransactionTemplate(resolvedLoanId);
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.CAPITALIZED_INCOME_TRANSACTION_COMMAND)) {
+            transactionData = this.loanReadPlatformService.retrieveLoanTransactionTemplate(resolvedLoanId,
+                    LoanTransactionType.CAPITALIZED_INCOME, transactionId);
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.CAPITALIZED_INCOME_ADJUSTMENT_TRANSACTION_COMMAND)) {
+            transactionData = this.loanReadPlatformService.retrieveLoanTransactionTemplate(resolvedLoanId,
+                    LoanTransactionType.CAPITALIZED_INCOME_ADJUSTMENT, transactionId);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
@@ -636,5 +744,22 @@ public class LoanTransactionsApiResource {
             }
         }
         return resolvedLoanId;
+    }
+
+    private Long getResolvedLoanIdWithExistsCheck(final Long loanId, final ExternalId loanExternalId) {
+        if (loanId != null) {
+            if (!loanReadPlatformService.existsByLoanId(loanId)) {
+                throw new LoanNotFoundException(loanId);
+            }
+            return loanId;
+        } else if (loanExternalId != null) {
+            final Long resolvedLoanId = loanReadPlatformService.retrieveLoanIdByExternalId(loanExternalId);
+            if (resolvedLoanId == null) {
+                throw new LoanNotFoundException(loanExternalId);
+            }
+            return resolvedLoanId;
+        } else {
+            throw new IllegalArgumentException("loanId and loanExternalId cannot be both null");
+        }
     }
 }

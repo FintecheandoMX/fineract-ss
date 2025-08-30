@@ -68,6 +68,7 @@ import org.apache.fineract.portfolio.accountdetails.service.AccountDetailsReadPl
 import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
+import org.apache.fineract.portfolio.client.service.ClientTemplateReadPlatformService;
 import org.apache.fineract.portfolio.loanaccount.guarantor.data.ObligeeData;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
@@ -85,6 +86,7 @@ public class ClientsApiResource {
 
     private final PlatformSecurityContext context;
     private final ClientReadPlatformService clientReadPlatformService;
+    private final ClientTemplateReadPlatformService clientTemplateReadPlatformService;
     private final ToApiJsonSerializer<ClientData> toApiJsonSerializer;
     private final ToApiJsonSerializer<AccountSummaryCollectionData> clientAccountSummaryToApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
@@ -122,7 +124,7 @@ public class ClientsApiResource {
         } else if (CommandParameterUtil.is(commandParam, "withdraw")) {
             clientData = clientReadPlatformService.retrieveAllNarrations(ClientApiConstants.CLIENT_WITHDRAW_REASON);
         } else {
-            clientData = clientReadPlatformService.retrieveTemplate(officeId, staffInSelectedOfficeOnly);
+            clientData = clientTemplateReadPlatformService.retrieveTemplate(officeId, staffInSelectedOfficeOnly);
         }
 
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
@@ -149,10 +151,11 @@ public class ClientsApiResource {
             @QueryParam("limit") @Parameter(description = "limit") final Integer limit,
             @QueryParam("orderBy") @Parameter(description = "orderBy") final String orderBy,
             @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder,
-            @QueryParam("orphansOnly") @Parameter(description = "orphansOnly") final Boolean orphansOnly) {
+            @QueryParam("orphansOnly") @Parameter(description = "orphansOnly") final Boolean orphansOnly,
+            @QueryParam("legalForm") final Integer legalForm) {
 
-        return retrieveAll(uriInfo, officeId, externalId, displayName, firstname, lastname, status, hierarchy, offset, limit, orderBy,
-                sortOrder, orphansOnly, false);
+        return retrieveAll(uriInfo, officeId, externalId, displayName, firstname, lastname, status, legalForm, hierarchy, offset, limit,
+                orderBy, sortOrder, orphansOnly, false);
     }
 
     @GET
@@ -440,8 +443,9 @@ public class ClientsApiResource {
     }
 
     public String retrieveAll(final UriInfo uriInfo, final Long officeId, final String externalId, final String displayName,
-            final String firstname, final String lastname, final String status, final String hierarchy, final Integer offset,
-            final Integer limit, final String orderBy, final String sortOrder, final Boolean orphansOnly, final boolean isSelfUser) {
+            final String firstname, final String lastname, final String status, final Integer legalForm, final String hierarchy,
+            final Integer offset, final Integer limit, final String orderBy, final String sortOrder, final Boolean orphansOnly,
+            final boolean isSelfUser) {
         context.authenticatedUser().validateHasReadPermission(ClientApiConstants.CLIENT_RESOURCE_NAME);
         sqlValidator.validate(orderBy);
         sqlValidator.validate(sortOrder);
@@ -449,7 +453,7 @@ public class ClientsApiResource {
         sqlValidator.validate(hierarchy);
         final SearchParameters searchParameters = SearchParameters.builder().limit(limit).officeId(officeId).externalId(externalId)
                 .name(displayName).hierarchy(hierarchy).firstname(firstname).lastname(lastname).status(status).orphansOnly(orphansOnly)
-                .isSelfUser(isSelfUser).offset(offset).orderBy(orderBy).sortOrder(sortOrder).build();
+                .isSelfUser(isSelfUser).offset(offset).orderBy(orderBy).sortOrder(sortOrder).legalForm(legalForm).build();
         final Page<ClientData> clientData = clientReadPlatformService.retrieveAll(searchParameters);
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return toApiJsonSerializer.serialize(settings, clientData, ClientApiConstants.CLIENT_RESPONSE_DATA_PARAMETERS);
@@ -458,7 +462,8 @@ public class ClientsApiResource {
     private ClientData retrieveClientData(final Long clientId, final boolean staffInSelectedOfficeOnly, final boolean isTemplate) {
         ClientData clientData = clientReadPlatformService.retrieveOne(clientId);
         if (isTemplate) {
-            final ClientData templateData = clientReadPlatformService.retrieveTemplate(clientData.getOfficeId(), staffInSelectedOfficeOnly);
+            final ClientData templateData = clientTemplateReadPlatformService.retrieveTemplate(clientData.getOfficeId(),
+                    staffInSelectedOfficeOnly);
             clientData = ClientData.templateOnTop(clientData, templateData);
             Collection<SavingsAccountData> savingAccountOptions = savingsAccountReadPlatformService.retrieveForLookup(clientId, null);
             if (savingAccountOptions != null && savingAccountOptions.size() > 0) {

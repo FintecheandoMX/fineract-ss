@@ -52,6 +52,11 @@ public class GlobalConfigurationHelper {
         return Calls.ok(FineractClientHelper.getFineractClient().globalConfigurations.retrieveOneByName(configName));
     }
 
+    public GlobalConfigurationPropertyData getGlobalConfigurationById(final Long configId) {
+        log.info("------------------------ RETRIEVING GLOBAL CONFIGURATION BY ID -------------------------");
+        return Calls.ok(FineractClientHelper.getFineractClient().globalConfigurations.retrieveOne3(configId));
+    }
+
     // TODO: This is quite a bad pattern and adds a lot of time to individual test executions
     public void resetAllDefaultGlobalConfigurations() {
 
@@ -100,8 +105,8 @@ public class GlobalConfigurationHelper {
         ArrayList<HashMap> expectedGlobalConfigurations = getAllDefaultGlobalConfigurations();
         GetGlobalConfigurationsResponse actualGlobalConfigurations = getAllGlobalConfigurations();
 
-        Assertions.assertEquals(56, expectedGlobalConfigurations.size());
-        Assertions.assertEquals(56, actualGlobalConfigurations.getGlobalConfiguration().size());
+        Assertions.assertEquals(57, expectedGlobalConfigurations.size());
+        Assertions.assertEquals(57, actualGlobalConfigurations.getGlobalConfiguration().size());
 
         for (int i = 0; i < expectedGlobalConfigurations.size(); i++) {
 
@@ -534,6 +539,15 @@ public class GlobalConfigurationHelper {
         enableImmediateChargeAccrualPostMaturity.put("enabled", false);
         enableImmediateChargeAccrualPostMaturity.put("trapDoor", false);
         defaults.add(enableImmediateChargeAccrualPostMaturity);
+
+        HashMap<String, Object> assetOwnerTransferInterestOutstandingStrategy = new HashMap<>();
+        assetOwnerTransferInterestOutstandingStrategy.put("name",
+                GlobalConfigurationConstants.ASSET_OWNER_TRANSFER_OUTSTANDING_INTEREST_CALCULATION_STRATEGY);
+        assetOwnerTransferInterestOutstandingStrategy.put("value", 0L);
+        assetOwnerTransferInterestOutstandingStrategy.put("enabled", false);
+        assetOwnerTransferInterestOutstandingStrategy.put("trapDoor", false);
+        assetOwnerTransferInterestOutstandingStrategy.put("string_value", "TOTAL_OUTSTANDING_INTEREST");
+        defaults.add(assetOwnerTransferInterestOutstandingStrategy);
 
         return defaults;
     }

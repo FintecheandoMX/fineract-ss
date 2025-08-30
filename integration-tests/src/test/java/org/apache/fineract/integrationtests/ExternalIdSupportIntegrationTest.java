@@ -34,7 +34,7 @@ import java.util.UUID;
 import org.apache.fineract.client.models.BusinessDateRequest;
 import org.apache.fineract.client.models.DeleteLoansLoanIdChargesChargeIdResponse;
 import org.apache.fineract.client.models.DeleteLoansLoanIdResponse;
-import org.apache.fineract.client.models.GetDelinquencyRangesResponse;
+import org.apache.fineract.client.models.DelinquencyRangeData;
 import org.apache.fineract.client.models.GetDelinquencyTagHistoryResponse;
 import org.apache.fineract.client.models.GetLoansApprovalTemplateResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdChargesChargeIdResponse;
@@ -840,15 +840,15 @@ public class ExternalIdSupportIntegrationTest extends BaseLoanIntegrationTest {
             String jsonRange = DelinquencyRangesHelper.getAsJSON(1, 3);
             PostDelinquencyRangeResponse delinquencyRangeResponse = DelinquencyRangesHelper.createDelinquencyRange(requestSpec,
                     responseSpec, jsonRange);
-            rangeIds.add(delinquencyRangeResponse.getResourceId());
+            rangeIds.add(Math.toIntExact(delinquencyRangeResponse.getResourceId()));
             jsonRange = DelinquencyRangesHelper.getAsJSON(4, 60);
 
-            GetDelinquencyRangesResponse range = DelinquencyRangesHelper.getDelinquencyRange(requestSpec, responseSpec,
-                    delinquencyRangeResponse.getResourceId());
+            DelinquencyRangeData range = DelinquencyRangesHelper.getDelinquencyRange(requestSpec, responseSpec,
+                    Math.toIntExact(delinquencyRangeResponse.getResourceId()));
 
             // Second Range
             delinquencyRangeResponse = DelinquencyRangesHelper.createDelinquencyRange(requestSpec, responseSpec, jsonRange);
-            rangeIds.add(delinquencyRangeResponse.getResourceId());
+            rangeIds.add(Math.toIntExact(delinquencyRangeResponse.getResourceId()));
 
             String jsonBucket = DelinquencyBucketsHelper.getAsJSON(rangeIds);
             PostDelinquencyBucketResponse delinquencyBucketResponse = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec,
@@ -859,7 +859,7 @@ public class ExternalIdSupportIntegrationTest extends BaseLoanIntegrationTest {
                     .withInterestRateFrequencyTypeAsMonths().withAmortizationTypeAsEqualPrincipalPayment()
                     .withInterestTypeAsDecliningBalance().withAccountingRuleAsNone()
                     .withInterestCalculationPeriodTypeAsRepaymentPeriod(true).withDaysInMonth("30").withDaysInYear("365")
-                    .withMoratorium("0", "0").withDelinquencyBucket(delinquencyBucketResponse.getResourceId())
+                    .withMoratorium("0", "0").withDelinquencyBucket(Math.toIntExact(delinquencyBucketResponse.getResourceId()))
                     .withInArrearsTolerance("1001").withMultiDisburse().withDisallowExpectedDisbursements(true).build(null);
             final Integer loanProductID = this.loanTransactionHelper.getLoanProductId(loanProductJSON);
 
@@ -875,8 +875,8 @@ public class ExternalIdSupportIntegrationTest extends BaseLoanIntegrationTest {
 
             GetLoansApprovalTemplateResponse loanApprovalResult = this.loanTransactionHelper.getLoanApprovalTemplate(loanExternalIdStr);
             assertEquals(actualDate, loanApprovalResult.getApprovalDate());
-            assertEquals(1000.0, loanApprovalResult.getApprovalAmount());
-            assertEquals(1000.0, loanApprovalResult.getNetDisbursalAmount());
+            assertEquals(1000.0, Utils.getDoubleValue(loanApprovalResult.getApprovalAmount()));
+            assertEquals(1000.0, Utils.getDoubleValue(loanApprovalResult.getNetDisbursalAmount()));
             assertNotNull(loanApprovalResult.getCurrency());
             assertNotNull(loanApprovalResult.getCurrency().getCode());
             assertEquals("USD", loanApprovalResult.getCurrency().getCode());
@@ -1006,7 +1006,7 @@ public class ExternalIdSupportIntegrationTest extends BaseLoanIntegrationTest {
             String loanExternalIdStr10 = UUID.randomUUID().toString();
             applyForLoanApplication(client.getClientId().intValue(), loanProductID, loanExternalIdStr10);
             result = this.loanTransactionHelper.assignLoanOfficerLoan(loanExternalIdStr10, new PostLoansLoanIdRequest()
-                    .assignmentDate("2 September 2022").locale("en").dateFormat("dd MMMM yyyy").toLoanOfficerId(loanOfficerId));
+                    .assignmentDate("2 September 2022").locale("en").dateFormat("dd MMMM yyyy").toLoanOfficerId(loanOfficerId.longValue()));
             assertEquals(loanExternalIdStr10, result.getResourceExternalId());
             result = this.loanTransactionHelper.unassignLoanOfficerLoan(loanExternalIdStr10,
                     new PostLoansLoanIdRequest().unassignedDate("2 September 2022").locale("en").dateFormat("dd MMMM yyyy"));

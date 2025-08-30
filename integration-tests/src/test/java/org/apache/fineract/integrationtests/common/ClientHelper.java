@@ -38,19 +38,19 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.client.models.AddressData;
+import org.apache.fineract.client.models.ClientAddressRequest;
 import org.apache.fineract.client.models.ClientTextSearch;
 import org.apache.fineract.client.models.DeleteClientsClientIdResponse;
-import org.apache.fineract.client.models.GetClientClientIdAddressesResponse;
 import org.apache.fineract.client.models.GetClientTransferProposalDateResponse;
 import org.apache.fineract.client.models.GetClientsClientIdAccountsResponse;
 import org.apache.fineract.client.models.GetClientsClientIdResponse;
 import org.apache.fineract.client.models.GetClientsClientIdTransactionsResponse;
 import org.apache.fineract.client.models.GetClientsClientIdTransactionsTransactionIdResponse;
-import org.apache.fineract.client.models.GetLoanAccountLockResponse;
 import org.apache.fineract.client.models.GetObligeeData;
+import org.apache.fineract.client.models.LoanAccountLockResponseDTO;
 import org.apache.fineract.client.models.PageClientSearchData;
 import org.apache.fineract.client.models.PagedRequestClientTextSearch;
-import org.apache.fineract.client.models.PostClientClientIdAddressesRequest;
 import org.apache.fineract.client.models.PostClientClientIdAddressesResponse;
 import org.apache.fineract.client.models.PostClientsClientIdIdentifiersRequest;
 import org.apache.fineract.client.models.PostClientsClientIdIdentifiersResponse;
@@ -107,7 +107,7 @@ public class ClientHelper {
         return Utils.performServerPost(requestSpec, responseSpec, CREATE_CLIENT_URL, requestBody, "clientId");
     }
 
-    public PostClientsResponse createClient(final PostClientsRequest request) {
+    public static PostClientsResponse createClient(final PostClientsRequest request) {
         return Calls.ok(FineractClientHelper.getFineractClient().clients.create6(request));
     }
 
@@ -263,7 +263,7 @@ public class ClientHelper {
     // org.apache.fineract.client.models.PostLoansLoanIdRequest)
     @Deprecated(forRemoval = true)
     public static PostClientClientIdAddressesResponse createClientAddress(final RequestSpecification requestSpec,
-            final ResponseSpecification responseSpec, long clientId, long addressTypeId, PostClientClientIdAddressesRequest request) {
+            final ResponseSpecification responseSpec, long clientId, long addressTypeId, ClientAddressRequest request) {
         final String CREATE_CLIENT_ADDRESS_URL = "/fineract-provider/api/v1/client/" + clientId + "/addresses?type=" + addressTypeId + "&"
                 + Utils.TENANT_IDENTIFIER;
         log.info("---------------------------------CREATING A CLIENT ADDRESS ---------------------------------------------");
@@ -659,12 +659,12 @@ public class ClientHelper {
     // Example: org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper.disburseLoan(java.lang.Long,
     // org.apache.fineract.client.models.PostLoansLoanIdRequest)
     @Deprecated(forRemoval = true)
-    public static List<GetClientClientIdAddressesResponse> getClientAddresses(final RequestSpecification requestSpec,
-            final ResponseSpecification responseSpec, final int clientId) {
+    public static List<AddressData> getClientAddresses(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final int clientId) {
         final String GET_CLIENT_ADDRESSES_URL = "/fineract-provider/api/v1/client/" + clientId + "/addresses?" + Utils.TENANT_IDENTIFIER;
         log.info("---------------------------------GET A CLIENT'S ADDRESSES ---------------------------------------------");
         String clientResponseStr = Utils.performServerGet(requestSpec, responseSpec, GET_CLIENT_ADDRESSES_URL);
-        return GSON.fromJson(clientResponseStr, new TypeToken<List<GetClientClientIdAddressesResponse>>() {}.getType());
+        return GSON.fromJson(clientResponseStr, new TypeToken<List<AddressData>>() {}.getType());
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -1215,7 +1215,7 @@ public class ClientHelper {
                 .activationDate(DEFAULT_DATE);
     }
 
-    public GetLoanAccountLockResponse retrieveLockedAccounts(int page, int limit) {
+    public LoanAccountLockResponseDTO retrieveLockedAccounts(int page, int limit) {
         return Calls.ok(FineractClientHelper.getFineractClient().loanAccountLockApi.retrieveLockedAccounts(page, limit));
     }
 

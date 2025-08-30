@@ -35,7 +35,6 @@ import org.apache.fineract.portfolio.loanaccount.data.OutstandingAmountsDTO;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
@@ -44,6 +43,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleD
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePeriodData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanApplicationTerms;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
+import org.apache.fineract.portfolio.loanaccount.mapper.LoanTermVariationsMapper;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanApplicationValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanScheduleValidator;
 import org.apache.fineract.portfolio.loanaccount.service.LoanUtilService;
@@ -62,7 +62,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     private final CurrencyReadPlatformService currencyReadPlatformService;
     private final LoanUtilService loanUtilService;
     private final LoanRepositoryWrapper loanRepository;
-    private final LoanLifecycleStateMachine defaultLoanLifecycleStateMachine;
+    private final LoanTermVariationsMapper loanTermVariationsMapper;
 
     @Override
     public LoanScheduleModel calculateLoanSchedule(final JsonQuery query, Boolean validateParams) {
@@ -202,16 +202,12 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     }
 
     private LoanApplicationTerms constructLoanApplicationTerms(final Loan loan) {
-        final LocalDate recalculateFrom = null;
-        ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-        return loan.constructLoanApplicationTerms(scheduleGeneratorDTO);
+        final ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, null);
+        return loanTermVariationsMapper.constructLoanApplicationTerms(scheduleGeneratorDTO, loan);
     }
 
     private Loan fetchLoan(final Long accountId) {
-        final Loan loanAccount = this.loanRepository.findOneWithNotFoundDetection(accountId, true);
-        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
-
-        return loanAccount;
+        return loanRepository.findOneWithNotFoundDetection(accountId, true);
     }
 
 }

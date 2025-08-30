@@ -90,6 +90,7 @@ import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.group.exception.GroupNotActiveException;
 import org.apache.fineract.portfolio.loanaccount.api.LoanApiConstants;
+import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeDataDTO;
 import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByData;
 import org.apache.fineract.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
@@ -121,15 +122,19 @@ import org.apache.fineract.portfolio.loanaccount.domain.transactionprocessor.imp
 import org.apache.fineract.portfolio.loanaccount.exception.InstallmentNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTransactionTypeException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeAdjustmentException;
+import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeDeactivationException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanChargeRefundException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanTransactionNotFoundException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.OverdueLoanScheduleData;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.DefaultScheduledDateGenerator;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.LoanScheduleType;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.ScheduledDateGenerator;
+import org.apache.fineract.portfolio.loanaccount.mapper.LoanAccountingBridgeMapper;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeApiJsonValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanChargeValidator;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanDownPaymentTransactionValidator;
+import org.apache.fineract.portfolio.loanaccount.service.adjustment.LoanAdjustmentParameter;
+import org.apache.fineract.portfolio.loanaccount.service.adjustment.LoanAdjustmentService;
 import org.apache.fineract.portfolio.loanproduct.data.LoanOverdueDTO;
 import org.apache.fineract.portfolio.loanproduct.exception.LinkedAccountRequiredException;
 import org.apache.fineract.portfolio.note.domain.Note;
@@ -157,7 +162,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
     private final LoanWritePlatformService loanWritePlatformService;
     private final LoanUtilService loanUtilService;
     private final LoanChargeReadPlatformService loanChargeReadPlatformService;
-    private final LoanLifecycleStateMachine defaultLoanLifecycleStateMachine;
+    private final LoanLifecycleStateMachine loanLifecycleStateMachine;
     private final AccountAssociationsReadPlatformService accountAssociationsReadPlatformService;
     private final FromJsonHelper fromApiJsonHelper;
     private final ConfigurationDomainService configurationDomainService;
@@ -174,6 +179,9 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
     private final LoanScheduleService loanScheduleService;
     private final ReprocessLoanTransactionsService reprocessLoanTransactionsService;
     private final LoanAccountService loanAccountService;
+    private final LoanAdjustmentService loanAdjustmentService;
+    private final LoanAccountingBridgeMapper loanAccountingBridgeMapper;
+    private final LoanChargeService loanChargeService;
 
     private static boolean isPartOfThisInstallment(LoanCharge loanCharge, LoanRepaymentScheduleInstallment e) {
         return DateUtils.isAfter(loanCharge.getDueDate(), e.getFromDate()) && !DateUtils.isAfter(loanCharge.getDueDate(), e.getDueDate());
@@ -211,8 +219,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             // apply this charge
             validateAddingNewChargeAllowed(loanDisburseDetails);
         }
-        final List<Long> existingTransactionIds = new ArrayList<>(loan.findExistingTransactionIds());
-        final List<Long> existingReversedTransactionIds = new ArrayList<>(loan.findExistingReversedTransactionIds());
+        final List<Long> existingTransactionIds = new ArrayList<>(loanTransactionRepository.findTransactionIdsByLoan(loan));
+        final List<Long> existingReversedTransactionIds = new ArrayList<>(loanTransactionRepository.findReversedTransactionIdsByLoan(loan));
 
         boolean isAppliedOnBackDate = false;
         LoanCharge loanCharge = null;
@@ -280,9 +288,9 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                 .equals(loan.transactionProcessingStrategy())) {
             // [For Adv payment allocation strategy] check if charge due date is earlier than last transaction
             // date, if yes trigger reprocess else no reprocessing
-            LoanTransaction lastPaymentTransaction = loan.getLastTransactionForReprocessing();
-            if (lastPaymentTransaction != null
-                    && DateUtils.isAfter(loanCharge.getEffectiveDueDate(), lastPaymentTransaction.getTransactionDate())) {
+            final Optional<LocalDate> lastPaymentTransactionDate = loanTransactionRepository.findLastTransactionDateForReprocessing(loan);
+            if (lastPaymentTransactionDate.isPresent()
+                    && DateUtils.isAfter(loanCharge.getEffectiveDueDate(), lastPaymentTransactionDate.get())) {
                 reprocessRequired = false;
             }
         }
@@ -298,7 +306,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             } else {
                 reprocessLoanTransactionsService.reprocessTransactions(loan);
             }
-
+            loanLifecycleStateMachine.determineAndTransition(loan, transactionDate);
             loan = loanAccountService.saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
         }
 
@@ -466,8 +474,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
         final Map<String, Object> changes = new LinkedHashMap<>(3);
         if (loan.getActiveCharges().contains(loanCharge)) {
-            final BigDecimal amount = loan.calculateAmountPercentageAppliedTo(loanCharge);
-            final Map<String, Object> loanChargeChanges = loanCharge.update(command, amount);
+            final BigDecimal amount = loanChargeService.calculateAmountPercentageAppliedTo(loan, loanCharge);
+            final Map<String, Object> loanChargeChanges = loanChargeService.update(command, amount, loanCharge);
             changes.putAll(loanChargeChanges);
             loan.updateSummaryWithTotalFeeChargesDueAtDisbursement(loan.deriveSumTotalOfChargesDueAtDisbursement());
         }
@@ -564,15 +572,13 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         }
 
         loanChargeValidator.validateLoanIsNotClosed(loan, loanCharge);
-        final LoanTransaction waiveTransaction = waiveLoanCharge(loan, loanCharge, defaultLoanLifecycleStateMachine, changes,
-                existingTransactionIds, existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge,
-                externalId);
+        final LoanTransaction waiveTransaction = waiveLoanCharge(loan, loanCharge, changes, existingTransactionIds,
+                existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge, externalId);
 
         if (loan.isInterestBearingAndInterestRecalculationEnabled()
                 && DateUtils.isBefore(loanCharge.getDueLocalDate(), DateUtils.getBusinessLocalDate())) {
             loanAccrualsProcessingService.reprocessExistingAccruals(loan);
             loanAccrualsProcessingService.processIncomePostingAndAccruals(loan);
-
         }
 
         this.loanTransactionRepository.saveAndFlush(waiveTransaction);
@@ -778,6 +784,49 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
     @Transactional
     @Override
+    public CommandProcessingResult deactivateOverdueLoanCharge(Long loanId, JsonCommand command) {
+        LocalDate fromDueDate = command.dateValueOfParameterNamed("dueDate");
+
+        List<LoanCharge> loanCharges = loanChargeRepository.findByLoanIdAndFromDueDate(loanId, fromDueDate);
+        loanCharges.forEach(this::inactivateOverdueLoanCharge);
+
+        Loan loan = loanAssembler.assembleFrom(loanId);
+        List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments = loan
+                .getRepaymentScheduleInstallments(si -> DateUtils.isDateInRangeInclusive(fromDueDate, si.getFromDate(), si.getDueDate())
+                        || DateUtils.isAfter(si.getFromDate(), fromDueDate));
+        repaymentScheduleInstallments.forEach(si -> si.setPenaltyAccrued(null));
+        List<LoanTransaction> accrualsToReverse = loan.getLoanTransactions(
+                tx -> tx.isNotReversed() && DateUtils.isAfterInclusive(tx.getTransactionDate(), fromDueDate) && tx.isAccrualRelated());
+        accrualsToReverse.forEach(tx -> loanAdjustmentService.adjustLoanTransaction(loan, tx,
+                LoanAdjustmentParameter.builder().transactionDate(tx.getTransactionDate()).build(), null, new HashMap<>()));
+
+        loanRepositoryWrapper.saveAndFlush(loan);
+
+        final CommandProcessingResultBuilder commandProcessingResultBuilder = new CommandProcessingResultBuilder();
+        return commandProcessingResultBuilder.withLoanId(loanId) //
+                .withEntityId(loanId) //
+                .withEntityExternalId(loan.getExternalId()) //
+                .build();
+    }
+
+    private void inactivateOverdueLoanCharge(LoanCharge loanCharge) {
+        if (!loanCharge.getChargeTimeType().isOverdueInstallment()) {
+            throw new LoanChargeDeactivationException("loan.charge.deactivate.invalid.charge.type",
+                    "Loan charge is not an overdue installment charge");
+        }
+
+        if (!loanCharge.isActive()) {
+            throw new LoanChargeDeactivationException("loan.charge.deactivate.invalid.status", "Loan charge is not active");
+        }
+
+        loanCharge.setActive(false);
+        loanChargeRepository.saveAndFlush(loanCharge);
+
+        businessEventNotifierService.notifyPostBusinessEvent(new LoanUpdateChargeBusinessEvent(loanCharge));
+    }
+
+    @Transactional
+    @Override
     public void applyOverdueChargesForLoan(final Long loanId, Collection<OverdueLoanScheduleData> overdueLoanScheduleDataList) {
         if (overdueLoanScheduleDataList.isEmpty()) {
             return;
@@ -792,8 +841,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         if (optPenaltyCharge.isEmpty()) {
             return;
         }
-        final List<Long> existingTransactionIds = loan.findExistingTransactionIds();
-        final List<Long> existingReversedTransactionIds = loan.findExistingReversedTransactionIds();
+        final List<Long> existingTransactionIds = loanTransactionRepository.findTransactionIdsByLoan(loan);
+        final List<Long> existingReversedTransactionIds = loanTransactionRepository.findReversedTransactionIdsByLoan(loan);
         boolean runInterestRecalculation = false;
         LocalDate recalculateFrom = DateUtils.getBusinessLocalDate();
         LocalDate lastChargeDate = null;
@@ -802,8 +851,10 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
             final JsonElement parsedCommand = this.fromApiJsonHelper.parse(overdueInstallment.toString());
             final JsonCommand command = JsonCommand.from(overdueInstallment.toString(), parsedCommand, this.fromApiJsonHelper, null, null,
                     null, null, null, loanId, null, null, null, null, null, null, null, null);
+
             LoanOverdueDTO overdueDTO = applyChargeToOverdueLoanInstallment(loan, overdueInstallment.getChargeId(),
                     overdueInstallment.getPeriodNumber(), command);
+
             loan = overdueDTO.getLoan();
             runInterestRecalculation = runInterestRecalculation || overdueDTO.isRunInterestRecalculation();
             if (DateUtils.isAfter(recalculateFrom, overdueDTO.getRecalculateFrom())) {
@@ -852,8 +903,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
     private LoanTransaction applyChargeAdjustment(final Loan loan, final LoanCharge loanCharge, final BigDecimal transactionAmount,
             final LocalDate transactionDate, final ExternalId txnExternalId, PaymentDetail paymentDetail) {
         businessEventNotifierService.notifyPreBusinessEvent(new LoanChargeAdjustmentPreBusinessEvent(loan));
-        final List<Long> existingTransactionIds = new ArrayList<>(loan.findExistingTransactionIds());
-        final List<Long> existingReversedTransactionIds = new ArrayList<>(loan.findExistingReversedTransactionIds());
+        final List<Long> existingTransactionIds = new ArrayList<>(loanTransactionRepository.findTransactionIdsByLoan(loan));
+        final List<Long> existingReversedTransactionIds = new ArrayList<>(loanTransactionRepository.findReversedTransactionIdsByLoan(loan));
 
         LoanTransaction loanChargeAdjustmentTransaction = LoanTransaction.chargeAdjustment(loan, transactionAmount, transactionDate,
                 txnExternalId, paymentDetail);
@@ -876,12 +927,12 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                             new MoneyHolder(loan.getTotalOverpaidAsMoney()), null));
         }
         loanAccountService.saveLoanTransactionWithDataIntegrityViolationChecks(loanChargeAdjustmentTransaction);
-        loan.updateLoanSummaryAndStatus();
+        loanLifecycleStateMachine.determineAndTransition(loan, loan.getLastUserTransactionDate());
 
         loanAccountService.saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
 
-        final Map<String, Object> accountingBridgeData = loan.deriveAccountingBridgeData(loan.getCurrency().getCode(),
-                existingTransactionIds, existingReversedTransactionIds, false);
+        final AccountingBridgeDataDTO accountingBridgeData = loanAccountingBridgeMapper.deriveAccountingBridgeData(
+                loan.getCurrency().getCode(), existingTransactionIds, existingReversedTransactionIds, false, loan);
         this.journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeData);
         loanAccrualTransactionBusinessEventService.raiseBusinessEventForAccrualTransactions(loan, existingTransactionIds);
         loanAccountDomainService.setLoanDelinquencyTag(loan, transactionDate);
@@ -901,8 +952,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
     private void undoInstalmentFee(Map<String, Object> changes, Loan loan, LoanTransaction loanTransaction,
             LoanChargePaidBy loanChargePaidBy) {
-        final List<Long> existingTransactionIds = loan.findExistingTransactionIds();
-        final List<Long> existingReversedTransactionIds = loan.findExistingReversedTransactionIds();
+        final List<Long> existingTransactionIds = loanTransactionRepository.findTransactionIdsByLoan(loan);
+        final List<Long> existingReversedTransactionIds = loanTransactionRepository.findReversedTransactionIdsByLoan(loan);
         LoanCharge loanCharge = loanChargePaidBy.getLoanCharge();
         final Integer installmentNumber = loanChargePaidBy.getInstallmentNumber();
         LoanInstallmentCharge chargePerInstallment;
@@ -957,8 +1008,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
     private void undoSpecifiedDueDateCharge(final Map<String, Object> changes, final Loan loan, final LoanTransaction loanTransaction,
             final LoanChargePaidBy loanChargePaidBy) {
 
-        final List<Long> existingTransactionIds = loan.findExistingTransactionIds();
-        final List<Long> existingReversedTransactionIds = loan.findExistingReversedTransactionIds();
+        final List<Long> existingTransactionIds = loanTransactionRepository.findTransactionIdsByLoan(loan);
+        final List<Long> existingReversedTransactionIds = loanTransactionRepository.findReversedTransactionIdsByLoan(loan);
         LoanCharge loanCharge = loanChargePaidBy.getLoanCharge();
         BigDecimal amountWaived = loanCharge.getAmountWaived(loan.getCurrency()).getAmount();
         if (!loanCharge.isWaived() || amountWaived == null) {
@@ -1057,22 +1108,26 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
         loanChargeValidator.validateChargeAdditionForDisbursedLoan(loan, loanCharge);
         loanChargeValidator.validateChargeHasValidSpecifiedDateIfApplicable(loan, loanCharge, loan.getDisbursementDate());
-        loan.addLoanCharge(loanCharge);
+        loanChargeService.addLoanCharge(loan, loanCharge);
         loanCharge = this.loanChargeRepository.saveAndFlush(loanCharge);
 
         // we want to apply charge transactions only for those loans charges that are applied when a loan is active and
         // the loan product uses Upfront Accruals, or only when the loan are closed too,
         if ((loan.getStatus().isActive() && loan.isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct())
-                || loan.getStatus().isOverpaid() || loan.getStatus().isClosedObligationsMet()
-                || (configurationDomainService.isImmediateChargeAccrualPostMaturityEnabled()
-                        && DateUtils.getBusinessLocalDate().isAfter(loan.getMaturityDate()))) {
-            final LoanTransaction applyLoanChargeTransaction = loan.handleChargeAppliedTransaction(loanCharge, null);
+                || loan.getStatus().isOverpaid() || loan.getStatus().isClosedObligationsMet()) {
+            final LoanTransaction applyLoanChargeTransaction = loanChargeService.handleChargeAppliedTransaction(loan, loanCharge, null);
             if (applyLoanChargeTransaction != null) {
                 this.loanTransactionRepository.saveAndFlush(applyLoanChargeTransaction);
                 businessEventNotifierService
                         .notifyPostBusinessEvent(new LoanAccrualTransactionCreatedBusinessEvent(applyLoanChargeTransaction));
             }
+        } else if (configurationDomainService.isImmediateChargeAccrualPostMaturityEnabled()
+                && DateUtils.getBusinessLocalDate().isAfter(loan.getMaturityDate())) {
+            final LoanTransaction loanTransaction = loanChargeService.createChargeAppliedTransaction(loan, loanCharge, null);
+            this.loanTransactionRepository.saveAndFlush(loanTransaction);
+            businessEventNotifierService.notifyPostBusinessEvent(new LoanAccrualTransactionCreatedBusinessEvent(loanTransaction));
         }
+
         return DateUtils.isBeforeBusinessDate(loanCharge.getDueLocalDate());
     }
 
@@ -1171,7 +1226,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
     public Loan runScheduleRecalculation(Loan loan, final LocalDate recalculateFrom) {
         if (loan.isInterestBearingAndInterestRecalculationEnabled() && !loan.isChargedOff()) {
-            final List<Long> existingTransactionIds = loan.findExistingTransactionIds();
+            final List<Long> existingTransactionIds = loanTransactionRepository.findTransactionIdsByLoan(loan);
             ScheduleGeneratorDTO generatorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
             loanScheduleService.handleRegenerateRepaymentScheduleWithInterestRecalculation(loan, generatorDTO);
             loanAccrualsProcessingService.reprocessExistingAccruals(loan);
@@ -1253,8 +1308,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
         final MonetaryCurrency currency = loan.getCurrency();
         boolean isAccountTransfer = false;
-        final Map<String, Object> accountingBridgeData = loan.deriveAccountingBridgeData(currency.getCode(), existingTransactionIds,
-                existingReversedTransactionIds, isAccountTransfer);
+        final AccountingBridgeDataDTO accountingBridgeData = loanAccountingBridgeMapper.deriveAccountingBridgeData(currency.getCode(),
+                existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, loan);
         this.journalEntryWritePlatformService.createJournalEntriesForLoan(accountingBridgeData);
     }
 
@@ -1381,8 +1436,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
         }
     }
 
-    public LoanTransaction waiveLoanCharge(final Loan loan, final LoanCharge loanCharge,
-            final LoanLifecycleStateMachine loanLifecycleStateMachine, final Map<String, Object> changes,
+    public LoanTransaction waiveLoanCharge(final Loan loan, final LoanCharge loanCharge, final Map<String, Object> changes,
             final List<Long> existingTransactionIds, final List<Long> existingReversedTransactionIds, final Integer loanInstallmentNumber,
             final ScheduleGeneratorDTO scheduleGeneratorDTO, final Money accruedCharge, final ExternalId externalId) {
         final Money amountWaived = loanCharge.waive(loan.getCurrency(), loanInstallmentNumber);
@@ -1434,8 +1488,8 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
 
         loan.updateSummaryWithTotalFeeChargesDueAtDisbursement(loan.deriveSumTotalOfChargesDueAtDisbursement());
 
-        existingTransactionIds.addAll(loan.findExistingTransactionIds());
-        existingReversedTransactionIds.addAll(loan.findExistingReversedTransactionIds());
+        existingTransactionIds.addAll(loanTransactionRepository.findTransactionIdsByLoan(loan));
+        existingReversedTransactionIds.addAll(loanTransactionRepository.findReversedTransactionIdsByLoan(loan));
 
         final LoanTransaction waiveLoanChargeTransaction = LoanTransaction.waiveLoanCharge(loan, loan.getOffice(), amountWaived,
                 transactionDate, feeChargesWaived, penaltyChargesWaived, unrecognizedIncome, externalId);
@@ -1460,9 +1514,7 @@ public class LoanChargeWritePlatformServiceImpl implements LoanChargeWritePlatfo
                     loan.getActiveCharges());
         }
 
-        loan.updateLoanSummaryDerivedFields();
-
-        loan.doPostLoanTransactionChecks(waiveLoanChargeTransaction.getTransactionDate(), loanLifecycleStateMachine);
+        loanLifecycleStateMachine.determineAndTransition(loan, waiveLoanChargeTransaction.getTransactionDate());
 
         return waiveLoanChargeTransaction;
     }

@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.mix.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -41,6 +42,7 @@ public class MixTaxonomyData {
     @SuppressWarnings("unused")
     private String description;
 
+    @JsonIgnore
     public boolean isPortfolio() {
         return this.type == 5;
     }

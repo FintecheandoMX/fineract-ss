@@ -20,13 +20,22 @@ package org.apache.fineract.integrationtests.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.apache.fineract.client.models.BusinessStep;
-import org.apache.fineract.client.models.UpdateBusinessStepConfigRequest;
+import org.apache.fineract.client.models.BusinessStepRequest;
 import org.apache.fineract.client.util.Calls;
 
 public class BusinessStepHelper {
 
     public BusinessStepHelper() {}
+
+    public BusinessStepsSnapshot getConfigurationSnapshot(String jobName) {
+        List<BusinessStep> businessSteps = Calls
+                .ok(FineractClientHelper.getFineractClient().businessStepConfiguration.retrieveAllConfiguredBusinessStep(jobName))
+                .getBusinessSteps();
+        return new BusinessStepsSnapshot(jobName, businessSteps);
+    }
 
     public void updateSteps(String jobName, String... steps) {
         long order = 0;
@@ -39,6 +48,19 @@ public class BusinessStepHelper {
             stepList.add(businessStep);
         }
         Calls.ok(FineractClientHelper.getFineractClient().businessStepConfiguration.updateJobBusinessStepConfig(jobName,
-                new UpdateBusinessStepConfigRequest().businessSteps(stepList)));
+                new BusinessStepRequest().businessSteps(stepList)));
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class BusinessStepsSnapshot {
+
+        private String jobName;
+        private List<BusinessStep> businessSteps;
+
+        public void restore() {
+            Calls.ok(FineractClientHelper.getFineractClient().businessStepConfiguration.updateJobBusinessStepConfig(jobName,
+                    new BusinessStepRequest().businessSteps(businessSteps)));
+        }
     }
 }

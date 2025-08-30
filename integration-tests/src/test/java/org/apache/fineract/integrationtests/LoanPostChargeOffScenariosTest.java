@@ -34,20 +34,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.fineract.client.models.AllowAttributeOverrides;
-import org.apache.fineract.client.models.ChargeData;
-import org.apache.fineract.client.models.ChargeToGLAccountMapper;
 import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
-import org.apache.fineract.client.models.GetLoanFeeToIncomeAccountMappings;
 import org.apache.fineract.client.models.GetLoanPaymentChannelToFundSourceMappings;
 import org.apache.fineract.client.models.GetLoanTransactionRelation;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTransactionIdResponse;
 import org.apache.fineract.client.models.JournalEntryTransactionItem;
+import org.apache.fineract.client.models.LoanProductChargeData;
+import org.apache.fineract.client.models.LoanProductChargeToGLAccountMapper;
+import org.apache.fineract.client.models.PaymentTypeRequest;
 import org.apache.fineract.client.models.PostLoanProductsRequest;
 import org.apache.fineract.client.models.PostLoanProductsResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdTransactionsRequest;
 import org.apache.fineract.client.models.PostLoansLoanIdTransactionsResponse;
-import org.apache.fineract.client.models.PostPaymentTypesRequest;
 import org.apache.fineract.client.models.PostPaymentTypesResponse;
 import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.PaymentTypeHelper;
@@ -1128,17 +1127,17 @@ public class LoanPostChargeOffScenariosTest extends BaseLoanIntegrationTest {
         List<Integer> principalVariationsForBorrowerCycle = new ArrayList<>();
         List<Integer> numberOfRepaymentVariationsForBorrowerCycle = new ArrayList<>();
         List<Integer> interestRateVariationsForBorrowerCycle = new ArrayList<>();
-        List<ChargeData> charges = new ArrayList<>();
-        List<ChargeToGLAccountMapper> penaltyToIncomeAccountMappings = new ArrayList<>();
-        List<GetLoanFeeToIncomeAccountMappings> feeToIncomeAccountMappings = new ArrayList<>();
+        List<LoanProductChargeData> charges = new ArrayList<>();
+        List<LoanProductChargeToGLAccountMapper> penaltyToIncomeAccountMappings = new ArrayList<>();
+        List<LoanProductChargeToGLAccountMapper> feeToIncomeAccountMappings = new ArrayList<>();
 
         String paymentTypeName = PaymentTypeHelper.randomNameGenerator("P_T", 5);
         String description = PaymentTypeHelper.randomNameGenerator("PT_Desc", 15);
         Boolean isCashPayment = false;
         Integer position = 1;
 
-        PostPaymentTypesResponse paymentTypesResponse = paymentTypeHelper.createPaymentType(new PostPaymentTypesRequest()
-                .name(paymentTypeName).description(description).isCashPayment(isCashPayment).position(position));
+        PostPaymentTypesResponse paymentTypesResponse = paymentTypeHelper.createPaymentType(
+                new PaymentTypeRequest().name(paymentTypeName).description(description).isCashPayment(isCashPayment).position(position));
         Long paymentTypeIdOne = paymentTypesResponse.getResourceId();
         Assertions.assertNotNull(paymentTypeIdOne);
 

@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -61,9 +62,13 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleP
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.MultiDisbursementEmiAmountException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.MultiDisbursementOutstandingAmoutException;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.exception.ScheduleDateException;
+import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionService;
 import org.apache.fineract.portfolio.loanproduct.domain.RepaymentStartDateType;
 
+@RequiredArgsConstructor
 public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanScheduleGenerator {
+
+    private final LoanTransactionService loanTransactionService;
 
     @Override
     public LoanScheduleModel generate(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
@@ -156,6 +161,14 @@ public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanSch
                 scheduleParams.setPrincipalToBeScheduled(remainingPrincipalAmt);
                 scheduleParams.setOutstandingBalance(remainingPrincipalAmt);
                 scheduleParams.setOutstandingBalanceAsPerRest(remainingPrincipalAmt);
+                loanApplicationTerms.setPrincipal(remainingPrincipalAmt);
+            } else if (loanApplicationTerms.isDownPaymentEnabled()) {
+                Money downPaymentAmt = Money.of(currency, MathUtil.percentageOf(loanApplicationTerms.getPrincipal().getAmount(),
+                        loanApplicationTerms.getDisbursedAmountPercentageForDownPayment(), 19));
+                if (loanApplicationTerms.getInstallmentAmountInMultiplesOf() != null) {
+                    downPaymentAmt = Money.roundToMultiplesOf(downPaymentAmt, loanApplicationTerms.getInstallmentAmountInMultiplesOf());
+                }
+                final Money remainingPrincipalAmt = loanApplicationTerms.getPrincipal().minus(downPaymentAmt);
                 loanApplicationTerms.setPrincipal(remainingPrincipalAmt);
             }
         }
@@ -2788,7 +2801,7 @@ public abstract class AbstractCumulativeLoanScheduleGenerator implements LoanSch
 
         LoanScheduleDTO loanScheduleDTO = rescheduleNextInstallments(mc, loanApplicationTerms, loan, holidayDetailDTO,
                 loanRepaymentScheduleTransactionProcessor, onDate, calculateTill);
-        List<LoanTransaction> loanTransactions = loan.retrieveListOfTransactionsForReprocessing();
+        final List<LoanTransaction> loanTransactions = loanTransactionService.retrieveListOfTransactionsForReprocessing(loan);
 
         loanRepaymentScheduleTransactionProcessor.reprocessLoanTransactions(loanApplicationTerms.getExpectedDisbursementDate(),
                 loanTransactions, currency, loanScheduleDTO.getInstallments(), loan.getActiveCharges());

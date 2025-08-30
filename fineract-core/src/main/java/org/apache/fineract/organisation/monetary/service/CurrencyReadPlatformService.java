@@ -18,14 +18,14 @@
  */
 package org.apache.fineract.organisation.monetary.service;
 
-import java.util.Collection;
+import java.util.List;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 
 public interface CurrencyReadPlatformService {
 
-    Collection<CurrencyData> retrieveAllowedCurrencies();
+    List<CurrencyData> retrieveAllowedCurrencies();
 
-    Collection<CurrencyData> retrieveAllPlatformCurrencies();
+    List<CurrencyData> retrieveAllPlatformCurrencies();
 
     CurrencyData retrieveCurrency(String code);
 }

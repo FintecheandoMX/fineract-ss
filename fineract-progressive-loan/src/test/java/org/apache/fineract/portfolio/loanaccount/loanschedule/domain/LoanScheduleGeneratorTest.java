@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.loanschedule.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -32,9 +33,14 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanScheduleP
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePlanDisbursementPeriod;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePlanDownPaymentPeriod;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.data.LoanSchedulePlanRepaymentPeriod;
+import org.apache.fineract.portfolio.loanaccount.service.InterestScheduleModelRepositoryWrapper;
+import org.apache.fineract.portfolio.loanaccount.service.LoanTransactionProcessingService;
 import org.apache.fineract.portfolio.loanproduct.calc.ProgressiveEMICalculator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class LoanScheduleGeneratorTest {
 
     private static final ProgressiveEMICalculator emiCalculator = new ProgressiveEMICalculator();
@@ -49,15 +55,20 @@ class LoanScheduleGeneratorTest {
     private static final LocalDate DISBURSEMENT_DATE = LocalDate.of(2024, 1, 15);
     private static final MathContext mc = new MathContext(12, RoundingMode.HALF_EVEN);
     private static final BigDecimal DOWN_PAYMENT_PORTION = BigDecimal.valueOf(25);
+    private static final LoanTransactionProcessingService loanTransactionProcessingService = mock(LoanTransactionProcessingService.class);
+    private static final InterestScheduleModelRepositoryWrapper interestScheduleModelRepositoryWrapperMock = mock(
+            InterestScheduleModelRepositoryWrapper.class);
 
     @Test
     void testGenerateLoanSchedule() {
         LoanRepaymentScheduleModelData modelData = new LoanRepaymentScheduleModelData(LocalDate.of(2024, 1, 1), CURRENCY,
                 DISBURSEMENT_AMOUNT, DISBURSEMENT_DATE, NUMBER_OF_REPAYMENTS, REPAYMENT_FREQUENCY, REPAYMENT_FREQUENCY_TYPE,
-                NOMINAL_INTEREST_RATE, false, DaysInMonthType.DAYS_30, DaysInYearType.DAYS_360, null, null, null, false);
+                NOMINAL_INTEREST_RATE, false, DaysInMonthType.DAYS_30, DaysInYearType.DAYS_360, null, null, null, false, null);
 
         ScheduledDateGenerator scheduledDateGenerator = new DefaultScheduledDateGenerator();
-        ProgressiveLoanScheduleGenerator generator = new ProgressiveLoanScheduleGenerator(scheduledDateGenerator, emiCalculator);
+        ProgressiveLoanScheduleGenerator generator = new ProgressiveLoanScheduleGenerator(scheduledDateGenerator, emiCalculator,
+                interestScheduleModelRepositoryWrapperMock);
+        generator.setLoanTransactionProcessingService(loanTransactionProcessingService);
 
         LoanSchedulePlan loanSchedule = generator.generate(mc, modelData);
 
@@ -89,10 +100,13 @@ class LoanScheduleGeneratorTest {
     void testGenerateLoanScheduleWithDownPayment() {
         LoanRepaymentScheduleModelData modelData = new LoanRepaymentScheduleModelData(LocalDate.of(2024, 1, 1), CURRENCY,
                 DISBURSEMENT_AMOUNT_100, LocalDate.of(2024, 1, 1), NUMBER_OF_REPAYMENTS, REPAYMENT_FREQUENCY, REPAYMENT_FREQUENCY_TYPE,
-                NOMINAL_INTEREST_RATE, true, DaysInMonthType.DAYS_30, DaysInYearType.DAYS_360, DOWN_PAYMENT_PORTION, null, null, false);
+                NOMINAL_INTEREST_RATE, true, DaysInMonthType.DAYS_30, DaysInYearType.DAYS_360, DOWN_PAYMENT_PORTION, null, null, false,
+                null);
 
         ScheduledDateGenerator scheduledDateGenerator = new DefaultScheduledDateGenerator();
-        ProgressiveLoanScheduleGenerator generator = new ProgressiveLoanScheduleGenerator(scheduledDateGenerator, emiCalculator);
+        ProgressiveLoanScheduleGenerator generator = new ProgressiveLoanScheduleGenerator(scheduledDateGenerator, emiCalculator,
+                interestScheduleModelRepositoryWrapperMock);
+        generator.setLoanTransactionProcessingService(loanTransactionProcessingService);
 
         LoanSchedulePlan loanSchedule = generator.generate(mc, modelData);
 

@@ -61,6 +61,7 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.collateralmanagement.service.LoanCollateralAssembler;
+import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.fund.domain.Fund;
 import org.apache.fineract.portfolio.fund.domain.FundRepository;
 import org.apache.fineract.portfolio.fund.exception.FundNotFoundException;
@@ -75,7 +76,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCollateralManagement;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCreditAllocationRule;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanDisbursementDetails;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanPaymentAllocationRule;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
@@ -92,6 +92,7 @@ import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanSchedu
 import org.apache.fineract.portfolio.loanaccount.loanschedule.service.LoanScheduleCalculationPlatformService;
 import org.apache.fineract.portfolio.loanaccount.mapper.LoanChargeMapper;
 import org.apache.fineract.portfolio.loanaccount.mapper.LoanCollateralManagementMapper;
+import org.apache.fineract.portfolio.loanaccount.service.schedule.LoanScheduleComponent;
 import org.apache.fineract.portfolio.loanproduct.LoanProductConstants;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRelatedDetail;
@@ -121,7 +122,6 @@ public class LoanAssemblerImpl implements LoanAssembler {
     private final ConfigurationDomainService configurationDomainService;
     private final WorkingDaysRepositoryWrapper workingDaysRepository;
     private final RateAssembler rateAssembler;
-    private final LoanLifecycleStateMachine defaultLoanLifecycleStateMachine;
     private final ExternalIdFactory externalIdFactory;
     private final AccountNumberFormatRepositoryWrapper accountNumberFormatRepository;
     private final GLIMAccountInfoRepository glimRepository;
@@ -136,6 +136,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
     private final LoanDisbursementService loanDisbursementService;
     private final LoanChargeService loanChargeService;
     private final LoanOfficerService loanOfficerService;
+    private final LoanScheduleComponent loanSchedule;
 
     @Override
     public Loan assembleFrom(final Long accountId) {
@@ -144,31 +145,17 @@ public class LoanAssemblerImpl implements LoanAssembler {
 
     @Override
     public Loan assembleFrom(final Long accountId, final boolean loadLazyCollections) {
-        final Loan loanAccount = loanRepository.findOneWithNotFoundDetection(accountId, loadLazyCollections);
-        setHelpers(loanAccount);
-
-        return loanAccount;
+        return loanRepository.findOneWithNotFoundDetection(accountId, loadLazyCollections);
     }
 
     @Override
     public Loan assembleFrom(final ExternalId externalId) {
-        final Loan loanAccount = loanRepository.findOneWithNotFoundDetection(externalId, true);
-        setHelpers(loanAccount);
-
-        return loanAccount;
+        return loanRepository.findOneWithNotFoundDetection(externalId, true);
     }
 
     @Override
     public Loan assembleFrom(final ExternalId externalId, final boolean loadLazyCollections) {
-        final Loan loanAccount = loanRepository.findOneWithNotFoundDetection(externalId, loadLazyCollections);
-        setHelpers(loanAccount);
-
-        return loanAccount;
-    }
-
-    @Override
-    public void setHelpers(final Loan loanAccount) {
-        loanAccount.setHelpers(defaultLoanLifecycleStateMachine, loanRepaymentScheduleTransactionProcessorFactory);
+        return loanRepository.findOneWithNotFoundDetection(externalId, loadLazyCollections);
     }
 
     @Override
@@ -292,8 +279,9 @@ public class LoanAssemblerImpl implements LoanAssembler {
             throw new IllegalStateException("No loan application exists for either a client or group (or both).");
         }
 
+        loanSchedule.updateLoanSchedule(loanApplication, loanScheduleModel);
+
         copyAdvancedPaymentRulesIfApplicable(transactionProcessingStrategyCode, loanProduct, loanApplication);
-        loanApplication.setHelpers(defaultLoanLifecycleStateMachine, this.loanRepaymentScheduleTransactionProcessorFactory);
         // TODO: review
         loanChargeService.recalculateAllCharges(loanApplication);
         topUpLoanConfiguration(element, loanApplication);
@@ -304,76 +292,80 @@ public class LoanAssemblerImpl implements LoanAssembler {
     // TODO: Review... it might be better somewhere else and rethink due to the account number generation logic is
     // intertwined with GLIM logic
     @Override
-    public void accountNumberGeneration(JsonCommand command, Loan loan) {
-        if (loan.isAccountNumberRequiresAutoGeneration()) {
-            JsonElement element = command.parsedJson();
-            final AccountNumberFormat accountNumberFormat = this.accountNumberFormatRepository.findByAccountType(EntityAccountType.LOAN);
-            // TODO: It is really weird to set GLIM info only if account number was not provided
-            // if application is of GLIM type
-            if (loan.getLoanType().isGLIMAccount()) {
-                Group group = loan.getGroup();
-                String accountNumber = "";
-                BigDecimal applicationId = BigDecimal.ZERO;
-                Boolean isLastChildApplication = false;
-                // GLIM specific parameters
-                final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(element.getAsJsonObject());
-                BigDecimal applicationIdFromParam = this.fromApiJsonHelper.extractBigDecimalNamed("applicationId", element, locale);
-                BigDecimal totalLoan = this.fromApiJsonHelper.extractBigDecimalNamed("totalLoan", element, locale);
-                if (applicationIdFromParam != null) {
-                    applicationId = applicationIdFromParam;
-                }
+    public void accountNumberGeneration(final JsonCommand command, final Loan loan) {
+        final JsonElement element = command.parsedJson();
 
-                Boolean isLastChildApplicationFromParam = this.fromApiJsonHelper.extractBooleanNamed("lastApplication", element);
-                if (isLastChildApplicationFromParam != null) {
-                    isLastChildApplication = isLastChildApplicationFromParam;
-                }
+        final String accountNo = this.fromApiJsonHelper.extractStringNamed("accountNo", element);
+        final boolean isAccountNumberRequiresAutoGeneration = StringUtils.isBlank(accountNo);
+        if (!isAccountNumberRequiresAutoGeneration) {
+            return;
+        }
 
-                if (this.fromApiJsonHelper.extractBooleanNamed("isParentAccount", element) != null) {
-                    // empty table check
-                    // TODO: This count here is weird... and seems parent-empty and parent not empty looks the same
-                    if (glimRepository.count() != 0) {
-                        // **************Parent-Not an empty
-                        // table********************
-                        createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
-                    } else {
-                        // ************** Parent-empty
-                        // table********************
-                        createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
-                    }
-                } else {
-                    // TODO: This count here is weird...
-                    if (glimRepository.count() != 0) {
-                        // Child-Not an empty table
-                        GroupLoanIndividualMonitoringAccount glimAccount = glimRepository.findOneByIsAcceptingChildAndApplicationId(true,
-                                applicationId);
-                        accountNumber = glimAccount.getAccountNumber() + (glimAccount.getChildAccountsCount() + 1);
-                        loan.updateAccountNo(accountNumber);
-                        this.glimAccountInfoWritePlatformService.incrementChildAccountCount(glimAccount);
-                        loan.setGlim(glimAccount);
-                    } else {
-                        // **************Child-empty
-                        // table********************
-                        // if the glim info is empty set the current account
-                        // as parent
-                        createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
-                    }
-                    // reset in cases of last child application of glim
-                    if (isLastChildApplication) {
-                        this.glimAccountInfoWritePlatformService
-                                .resetIsAcceptingChild(glimRepository.findOneByIsAcceptingChildAndApplicationId(true, applicationId));
-                    }
-                }
-            } else { // for applications other than GLIM
-                loan.updateAccountNo(this.accountNumberGenerator.generate(loan, accountNumberFormat));
+        final AccountNumberFormat accountNumberFormat = this.accountNumberFormatRepository.findByAccountType(EntityAccountType.LOAN);
+        // TODO: It is really weird to set GLIM info only if account number was not provided
+        // if application is of GLIM type
+        if (loan.getLoanType().isGLIMAccount()) {
+            Group group = loan.getGroup();
+            String accountNumber;
+            BigDecimal applicationId = BigDecimal.ZERO;
+            // GLIM specific parameters
+            final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(element.getAsJsonObject());
+            BigDecimal applicationIdFromParam = this.fromApiJsonHelper.extractBigDecimalNamed("applicationId", element, locale);
+            BigDecimal totalLoan = this.fromApiJsonHelper.extractBigDecimalNamed("totalLoan", element, locale);
+            if (applicationIdFromParam != null) {
+                applicationId = applicationIdFromParam;
             }
+
+            Boolean isLastChildApplicationFromParam = this.fromApiJsonHelper.extractBooleanNamed("lastApplication", element);
+            boolean isLastChildApplication = false;
+            if (isLastChildApplicationFromParam != null) {
+                isLastChildApplication = isLastChildApplicationFromParam;
+            }
+
+            if (this.fromApiJsonHelper.extractBooleanNamed("isParentAccount", element) != null) {
+                // empty table check
+                // TODO: This count here is weird... and seems parent-empty and parent not empty looks the same
+                if (glimRepository.count() != 0) {
+                    // **************Parent-Not an empty
+                    // table********************
+                    createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
+                } else {
+                    // ************** Parent-empty
+                    // table********************
+                    createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
+                }
+            } else {
+                // TODO: This count here is weird...
+                if (glimRepository.count() != 0) {
+                    // Child-Not an empty table
+                    GroupLoanIndividualMonitoringAccount glimAccount = glimRepository.findOneByIsAcceptingChildAndApplicationId(true,
+                            applicationId);
+                    accountNumber = glimAccount.getAccountNumber() + (glimAccount.getChildAccountsCount() + 1);
+                    loan.setAccountNumber(accountNumber);
+                    this.glimAccountInfoWritePlatformService.incrementChildAccountCount(glimAccount);
+                    loan.setGlim(glimAccount);
+                } else {
+                    // **************Child-empty
+                    // table********************
+                    // if the glim info is empty set the current account
+                    // as parent
+                    createAndSetGLIMAccount(totalLoan, loan, accountNumberFormat, group, applicationId);
+                }
+                // reset in cases of last child application of glim
+                if (isLastChildApplication) {
+                    this.glimAccountInfoWritePlatformService
+                            .resetIsAcceptingChild(glimRepository.findOneByIsAcceptingChildAndApplicationId(true, applicationId));
+                }
+            }
+        } else { // for applications other than GLIM
+            loan.setAccountNumber(this.accountNumberGenerator.generate(loan, accountNumberFormat));
         }
     }
 
     private void createAndSetGLIMAccount(BigDecimal totalLoan, Loan loan, AccountNumberFormat accountNumberFormat, Group group,
             BigDecimal applicationId) {
-        String accountNumber;
-        accountNumber = this.accountNumberGenerator.generate(loan, accountNumberFormat);
-        loan.updateAccountNo(accountNumber + "1");
+        final String accountNumber = this.accountNumberGenerator.generate(loan, accountNumberFormat);
+        loan.setAccountNumber(accountNumber + "1");
         GroupLoanIndividualMonitoringAccount glimAccount = glimAccountInfoWritePlatformService.createGLIMAccount(accountNumber, group,
                 totalLoan, 1L, true, LoanStatus.SUBMITTED_AND_PENDING_APPROVAL.getValue(), applicationId);
         loan.setGlim(glimAccount);
@@ -720,10 +712,10 @@ public class LoanAssemblerImpl implements LoanAssembler {
         }
 
         if (command.isChangeInIntegerParameterNamed(LoanApiConstants.loanTermFrequencyTypeParameterName,
-                loan.getTermPeriodFrequencyType())) {
+                loan.getTermPeriodFrequencyType().getValue())) {
             final Integer newValue = command.integerValueOfParameterNamed(LoanApiConstants.loanTermFrequencyTypeParameterName);
             changes.put(LoanApiConstants.loanTermFrequencyTypeParameterName, newValue);
-            loan.setTermPeriodFrequencyType(newValue);
+            loan.setTermPeriodFrequencyType(PeriodFrequencyType.fromInt(newValue));
         }
 
         if (command.isChangeInBigDecimalParameterNamed(LoanApiConstants.principalParameterName, loan.getApprovedPrincipal())) {
@@ -840,7 +832,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
 
         final String chargesParamName = "charges";
         if (changes.containsKey(chargesParamName)) {
-            loan.updateLoanCharges(possiblyModifiedLoanCharges);
+            loanChargeService.updateLoanCharges(loan, possiblyModifiedLoanCharges);
         }
 
         // update installment level delinquency
@@ -857,8 +849,8 @@ public class LoanAssemblerImpl implements LoanAssembler {
             final JsonElement parsedQuery = this.fromApiJsonHelper.parse(command.json());
             final JsonQuery query = JsonQuery.from(command.json(), parsedQuery, this.fromApiJsonHelper);
 
-            final LoanScheduleModel loanSchedule = this.calculationPlatformService.calculateLoanSchedule(query, false);
-            loan.updateLoanSchedule(loanSchedule);
+            final LoanScheduleModel loanScheduleModel = this.calculationPlatformService.calculateLoanSchedule(query, false);
+            loanSchedule.updateLoanSchedule(loan, loanScheduleModel);
             loanAccrualsProcessingService.reprocessExistingAccruals(loan);
             loanChargeService.recalculateAllCharges(loan);
         }
@@ -885,7 +877,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
         loan.setClosedOnDate(withdrawnOn);
         loan.setClosedBy(currentUser);
 
-        final Locale locale = new Locale(command.locale());
+        final Locale locale = Locale.of(command.locale());
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
 
         actualChanges.put(Loan.PARAM_STATUS, LoanEnumerations.status(loan.getStatus()));
@@ -907,7 +899,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
         loan.setClosedOnDate(rejectedOn);
         loan.setClosedBy(currentUser);
 
-        final Locale locale = new Locale(command.locale());
+        final Locale locale = Locale.of(command.locale());
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
 
         actualChanges.put(Loan.PARAM_STATUS, LoanEnumerations.status(loan.getStatus()));

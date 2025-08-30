@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.UploadRequest;
 import org.apache.fineract.infrastructure.documentmanagement.api.ImagesApiResource;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -52,16 +53,19 @@ import org.apache.fineract.portfolio.client.api.ClientsApiResource;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.self.client.data.SelfClientDataValidator;
 import org.apache.fineract.portfolio.self.client.service.AppuserClientMapperReadService;
+import org.apache.fineract.portfolio.self.config.SelfServiceModuleIsEnabledCondition;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/self/clients")
 @Component
 @Tag(name = "Self Client", description = "")
 @RequiredArgsConstructor
+@Conditional(SelfServiceModuleIsEnabledCondition.class)
 public class SelfClientsApiResource {
 
     private final PlatformSecurityContext context;
@@ -88,14 +92,15 @@ public class SelfClientsApiResource {
             @QueryParam("status") @Parameter(description = "status") final String status,
             @QueryParam("limit") @Parameter(description = "limit") final Integer limit,
             @QueryParam("orderBy") @Parameter(description = "orderBy") final String orderBy,
-            @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder) {
+            @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder,
+            @QueryParam("legalForm") final Integer legalForm) {
 
         final Long officeId = null;
         final String externalId = null;
         final String hierarchy = null;
         final Boolean orphansOnly = null;
-        return this.clientApiResource.retrieveAll(uriInfo, officeId, externalId, displayName, firstname, lastname, status, hierarchy,
-                offset, limit, orderBy, sortOrder, orphansOnly, true);
+        return this.clientApiResource.retrieveAll(uriInfo, officeId, externalId, displayName, firstname, lastname, status, legalForm,
+                hierarchy, offset, limit, orderBy, sortOrder, orphansOnly, true);
     }
 
     @GET
@@ -236,9 +241,9 @@ public class SelfClientsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @RequestBody(description = "Add new client image", content = {
             @Content(mediaType = MediaType.MULTIPART_FORM_DATA, schema = @Schema(implementation = UploadRequest.class)) })
-    public String addNewClientImage(@PathParam("clientId") final Long clientId, @HeaderParam("Content-Length") final Long fileSize,
-            @FormDataParam("file") final InputStream inputStream, @FormDataParam("file") final FormDataContentDisposition fileDetails,
-            @FormDataParam("file") final FormDataBodyPart bodyPart) {
+    public CommandProcessingResult addNewClientImage(@PathParam("clientId") final Long clientId,
+            @HeaderParam("Content-Length") final Long fileSize, @FormDataParam("file") final InputStream inputStream,
+            @FormDataParam("file") final FormDataContentDisposition fileDetails, @FormDataParam("file") final FormDataBodyPart bodyPart) {
 
         validateAppuserClientsMapping(clientId);
         return this.imagesApiResource.addNewClientImage(ClientApiConstants.clientEntityName, clientId, fileSize, inputStream, fileDetails,
@@ -250,8 +255,8 @@ public class SelfClientsApiResource {
     @Path("{clientId}/images")
     @Consumes({ MediaType.TEXT_PLAIN, MediaType.TEXT_HTML, MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public String addNewClientImage(@PathParam("entity") final String entityName, @PathParam("clientId") final Long clientId,
-            final String jsonRequestBody) {
+    public CommandProcessingResult addNewClientImage(@PathParam("entity") final String entityName,
+            @PathParam("clientId") final Long clientId, final String jsonRequestBody) {
         validateAppuserClientsMapping(clientId);
         return this.imagesApiResource.addNewClientImage(ClientApiConstants.clientEntityName, clientId, jsonRequestBody);
 
@@ -261,7 +266,7 @@ public class SelfClientsApiResource {
     @Path("{clientId}/images")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public String deleteClientImage(@PathParam("clientId") final Long clientId) {
+    public CommandProcessingResult deleteClientImage(@PathParam("clientId") final Long clientId) {
 
         validateAppuserClientsMapping(clientId);
         return this.imagesApiResource.deleteClientImage(ClientApiConstants.clientEntityName, clientId);

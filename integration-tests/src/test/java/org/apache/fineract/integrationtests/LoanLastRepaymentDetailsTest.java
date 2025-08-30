@@ -32,7 +32,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.HashMap;
 import java.util.UUID;
-import org.apache.fineract.client.models.GetDelinquencyBucketsResponse;
+import org.apache.fineract.client.models.DelinquencyBucketData;
 import org.apache.fineract.client.models.GetLoanProductsProductIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdTransactionsRequest;
@@ -75,7 +75,7 @@ public class LoanLastRepaymentDetailsTest {
 
         // Delinquency Bucket
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         // Client and Loan account creation
@@ -100,7 +100,7 @@ public class LoanLastRepaymentDetailsTest {
         assertTrue(loanDetails.getStatus().getActive());
         assertNotNull(loanDetails.getDelinquent());
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentAmount());
-        assertEquals(loanDetails.getDelinquent().getLastRepaymentAmount(), 500);
+        assertEquals(500.00, Utils.getDoubleValue(loanDetails.getDelinquent().getLastRepaymentAmount()));
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentDate());
         assertEquals(loanDetails.getDelinquent().getLastRepaymentDate(), lastRepaymentDate_1);
 
@@ -117,7 +117,7 @@ public class LoanLastRepaymentDetailsTest {
         assertTrue(loanDetails.getStatus().getClosedObligationsMet());
         assertNotNull(loanDetails.getDelinquent());
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentAmount());
-        assertEquals(loanDetails.getDelinquent().getLastRepaymentAmount(), 500);
+        assertEquals(500.00, Utils.getDoubleValue(loanDetails.getDelinquent().getLastRepaymentAmount()));
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentDate());
         assertEquals(loanDetails.getDelinquent().getLastRepaymentDate(), lastRepaymentDate_2);
 
@@ -130,7 +130,7 @@ public class LoanLastRepaymentDetailsTest {
 
         // Delinquency Bucket
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         // Client and Loan account creation
@@ -155,7 +155,7 @@ public class LoanLastRepaymentDetailsTest {
         assertTrue(loanDetails.getStatus().getActive());
         assertNotNull(loanDetails.getDelinquent());
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentAmount());
-        assertEquals(loanDetails.getDelinquent().getLastRepaymentAmount(), 500);
+        assertEquals(500.00, Utils.getDoubleValue(loanDetails.getDelinquent().getLastRepaymentAmount()));
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentDate());
         assertEquals(loanDetails.getDelinquent().getLastRepaymentDate(), lastRepaymentDate_1);
 
@@ -171,7 +171,7 @@ public class LoanLastRepaymentDetailsTest {
         assertTrue(loanDetails.getStatus().getOverpaid());
         assertNotNull(loanDetails.getDelinquent());
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentAmount());
-        assertEquals(loanDetails.getDelinquent().getLastRepaymentAmount(), 600);
+        assertEquals(600.00, Utils.getDoubleValue(loanDetails.getDelinquent().getLastRepaymentAmount()));
         assertNotNull(loanDetails.getDelinquent().getLastRepaymentDate());
         assertEquals(loanDetails.getDelinquent().getLastRepaymentDate(), lastRepaymentDate_2);
 

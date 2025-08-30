@@ -20,11 +20,12 @@ package org.apache.fineract.portfolio.loanaccount.data;
 
 import java.math.BigDecimal;
 import lombok.Data;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 
 @Data
 public class LoanTransactionBalance {
 
-    private final Integer transactionType;
+    private final LoanTransactionType transactionType;
     private final boolean reversed;
     private final boolean manuallyAdjustedOrReversed;
     private final BigDecimal amount;

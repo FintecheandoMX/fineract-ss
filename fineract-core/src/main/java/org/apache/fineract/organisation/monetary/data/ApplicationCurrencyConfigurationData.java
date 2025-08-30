@@ -18,21 +18,25 @@
  */
 package org.apache.fineract.organisation.monetary.data;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Collection;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Immutable data object for application currency.
  */
-public class ApplicationCurrencyConfigurationData {
+
+@Getter
+@RequiredArgsConstructor
+public class ApplicationCurrencyConfigurationData implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @SuppressWarnings("unused")
     private final Collection<CurrencyData> selectedCurrencyOptions;
     @SuppressWarnings("unused")
     private final Collection<CurrencyData> currencyOptions;
-
-    public ApplicationCurrencyConfigurationData(final Collection<CurrencyData> currencyOptions,
-            final Collection<CurrencyData> selectedCurrencyOptions) {
-        this.currencyOptions = currencyOptions;
-        this.selectedCurrencyOptions = selectedCurrencyOptions;
-    }
 }

@@ -43,7 +43,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -74,6 +73,7 @@ import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionData;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountNotFoundException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountChargeReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadPlatformService;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.springframework.stereotype.Component;
@@ -86,6 +86,7 @@ import org.springframework.util.CollectionUtils;
 public class SavingsAccountsApiResource {
 
     private final SavingsAccountReadPlatformService savingsAccountReadPlatformService;
+    private final SavingsAccountTemplateReadPlatformService savingsAccountTemplateReadPlatformService;
     private final PlatformSecurityContext context;
     private final DefaultToApiJsonSerializer<SavingsAccountData> toApiJsonSerializer;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
@@ -112,7 +113,7 @@ public class SavingsAccountsApiResource {
 
         context.authenticatedUser().validateHasReadPermission(SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME);
 
-        final SavingsAccountData savingsAccount = savingsAccountReadPlatformService.retrieveTemplate(clientId, groupId, productId,
+        final SavingsAccountData savingsAccount = savingsAccountTemplateReadPlatformService.retrieveTemplate(clientId, groupId, productId,
                 staffInSelectedOfficeOnly);
 
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
@@ -185,14 +186,10 @@ public class SavingsAccountsApiResource {
     @Path("{accountId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a savings application/account", description = "Retrieves a savings application/account\n\n"
-            + "Example Requests :\n" + "\n" + "savingsaccounts/1\n" + "\n" + "\n" + "savingsaccounts/1?associations=all")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SavingsAccountsApiResourceSwagger.GetSavingsAccountsAccountIdResponse.class))) })
-    public String retrieveOne(@PathParam("accountId") @Parameter(description = "accountId") final Long accountId,
-            @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") @Parameter(description = "staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
-            @DefaultValue("all") @QueryParam("chargeStatus") @Parameter(description = "chargeStatus") final String chargeStatus,
-            @Context final UriInfo uriInfo) {
+    public SavingsAccountData retrieveOne(@PathParam("accountId") final Long accountId,
+            @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
+            @DefaultValue("all") @QueryParam("chargeStatus") final String chargeStatus,
+            @QueryParam("associations") final String associations, @Context final UriInfo uriInfo) {
 
         return retrieveSavingAccount(accountId, null, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
     }
@@ -201,15 +198,10 @@ public class SavingsAccountsApiResource {
     @Path("/external-id/{externalId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a savings application/account by external id", description = "Retrieves a savings application/account by external id\n\n"
-            + "Example Requests :\n" + "\n" + "savingsaccounts/external-id/ExternalId1\n" + "\n" + "\n"
-            + "savingsaccounts/external-id/ExternalId1?associations=all")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SavingsAccountsApiResourceSwagger.GetSavingsAccountsAccountIdResponse.class))) })
-    public String retrieveOne(@PathParam("externalId") @Parameter(description = "externalId") final String externalId,
-            @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") @Parameter(description = "staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
-            @DefaultValue("all") @QueryParam("chargeStatus") @Parameter(description = "chargeStatus") final String chargeStatus,
-            @Context final UriInfo uriInfo) {
+    public SavingsAccountData retrieveOne(@PathParam("externalId") final String externalId,
+            @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly,
+            @DefaultValue("all") @QueryParam("chargeStatus") final String chargeStatus,
+            @QueryParam("associations") final String associations, @Context final UriInfo uriInfo) {
 
         return retrieveSavingAccount(null, externalId, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
     }
@@ -482,8 +474,8 @@ public class SavingsAccountsApiResource {
         return toApiJsonSerializer.serialize(importDocumentId);
     }
 
-    private String retrieveSavingAccount(Long accountId, String externalId, boolean staffInSelectedOfficeOnly, String chargeStatus,
-            UriInfo uriInfo) {
+    private SavingsAccountData retrieveSavingAccount(Long accountId, String externalId, boolean staffInSelectedOfficeOnly,
+            String chargeStatus, UriInfo uriInfo) {
         context.authenticatedUser().validateHasReadPermission(SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME);
 
         if (!(is(chargeStatus, "all") || is(chargeStatus, "active") || is(chargeStatus, "inactive"))) {
@@ -494,14 +486,7 @@ public class SavingsAccountsApiResource {
         accountId = getResolvedAccountId(accountId, accountExternalId);
         final SavingsAccountData savingsAccount = savingsAccountReadPlatformService.retrieveOne(accountId);
 
-        final Set<String> mandatoryResponseParameters = new HashSet<>();
-        final SavingsAccountData savingsAccountTemplate = populateTemplateAndAssociations(accountId, savingsAccount,
-                staffInSelectedOfficeOnly, chargeStatus, uriInfo, mandatoryResponseParameters);
-
-        final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters(),
-                mandatoryResponseParameters);
-        return toApiJsonSerializer.serialize(settings, savingsAccountTemplate,
-                SavingsApiSetConstants.SAVINGS_ACCOUNT_RESPONSE_DATA_PARAMETERS);
+        return populateTemplateAndAssociations(accountId, savingsAccount, staffInSelectedOfficeOnly, chargeStatus, uriInfo);
     }
 
     private String updateSavingAccount(Long accountId, String externalId, String apiRequestBodyAsJson, String commandParam) {
@@ -627,8 +612,7 @@ public class SavingsAccountsApiResource {
     }
 
     private SavingsAccountData populateTemplateAndAssociations(final Long accountId, final SavingsAccountData savingsAccount,
-            final boolean staffInSelectedOfficeOnly, final String chargeStatus, final UriInfo uriInfo,
-            final Set<String> mandatoryResponseParameters) {
+            final boolean staffInSelectedOfficeOnly, final String chargeStatus, final UriInfo uriInfo) {
 
         Collection<SavingsAccountTransactionData> transactions = null;
         Collection<SavingsAccountChargeData> charges = null;
@@ -641,7 +625,6 @@ public class SavingsAccountsApiResource {
             }
 
             if (associationParameters.contains(SavingsApiConstants.transactions)) {
-                mandatoryResponseParameters.add(SavingsApiConstants.transactions);
                 final Collection<SavingsAccountTransactionData> currentTransactions = savingsAccountReadPlatformService
                         .retrieveAllTransactions(accountId, DepositAccountType.SAVINGS_DEPOSIT);
                 if (!CollectionUtils.isEmpty(currentTransactions)) {
@@ -650,7 +633,6 @@ public class SavingsAccountsApiResource {
             }
 
             if (associationParameters.contains(SavingsApiConstants.charges)) {
-                mandatoryResponseParameters.add(SavingsApiConstants.charges);
                 final Collection<SavingsAccountChargeData> currentCharges = savingsAccountChargeReadPlatformService
                         .retrieveSavingsAccountCharges(accountId, chargeStatus);
                 if (!CollectionUtils.isEmpty(currentCharges)) {
@@ -662,8 +644,8 @@ public class SavingsAccountsApiResource {
         SavingsAccountData templateData = null;
         final ApiRequestJsonSerializationSettings settings = apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         if (settings.isTemplate()) {
-            templateData = savingsAccountReadPlatformService.retrieveTemplate(savingsAccount.getClientId(), savingsAccount.getGroupId(),
-                    savingsAccount.getSavingsProductId(), staffInSelectedOfficeOnly);
+            templateData = savingsAccountTemplateReadPlatformService.retrieveTemplate(savingsAccount.getClientId(),
+                    savingsAccount.getGroupId(), savingsAccount.getSavingsProductId(), staffInSelectedOfficeOnly);
         }
 
         return SavingsAccountData.withTemplateOptions(savingsAccount, templateData, transactions, charges);

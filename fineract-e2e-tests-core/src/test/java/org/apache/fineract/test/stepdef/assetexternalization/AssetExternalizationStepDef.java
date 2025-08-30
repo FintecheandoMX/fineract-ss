@@ -49,12 +49,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.client.models.ExternalAssetOwnerRequest;
 import org.apache.fineract.client.models.ExternalOwnerJournalEntryData;
 import org.apache.fineract.client.models.ExternalOwnerTransferJournalEntryData;
 import org.apache.fineract.client.models.ExternalTransferData;
 import org.apache.fineract.client.models.JournalEntryData;
 import org.apache.fineract.client.models.PageExternalTransferData;
-import org.apache.fineract.client.models.PostInitiateTransferRequest;
 import org.apache.fineract.client.models.PostInitiateTransferResponse;
 import org.apache.fineract.client.models.PostLoansResponse;
 import org.apache.fineract.client.services.ExternalAssetOwnersApi;
@@ -116,7 +116,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest();
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest();
         if (transferData.get(0).equals(TRANSACTION_TYPE_BUYBACK)) {
             request.settlementDate(transferData.get(1))//
                     .transferExternalId(transferExternalId)//
@@ -163,7 +163,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest()//
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest()//
                 .settlementDate(settlementDate)//
                 .ownerExternalId(null)//
                 .transferExternalId(testContext().get(TestContextKey.ASSET_EXTERNALIZATION_TRANSFER_EXTERNAL_ID_FROM_RESPONSE))//
@@ -202,7 +202,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         String loanExternalId = loanResponse.body().getResourceExternalId();
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest();
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest();
         if (transferData.get(0).equals(TRANSACTION_TYPE_BUYBACK)) {
             request.settlementDate(transferData.get(1))//
                     .transferExternalId(transferExternalId)//
@@ -341,11 +341,6 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
                 transferExternalId = testContext().get(TestContextKey.ASSET_EXTERNALIZATION_SALES_TRANSFER_EXTERNAL_ID_FROM_RESPONSE);
             }
 
-            expectedValues.add(ownerExternalIdStored);
-            expectedValues.add(loanId == null ? null : String.valueOf(loanId));
-            expectedValues.add(loanExternalId);
-            expectedValues.add(transferExternalId);
-
             List<List<String>> actualValuesList = content.stream().map(t -> {
                 List<String> actualValues = new ArrayList<>();
                 actualValues.add(t.getSettlementDate() == null ? null : FORMATTER.format(t.getSettlementDate()));
@@ -354,12 +349,42 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
                 actualValues.add(t.getEffectiveFrom() == null ? null : FORMATTER.format(t.getEffectiveFrom()));
                 actualValues.add(t.getEffectiveTo() == null ? null : FORMATTER.format(t.getEffectiveTo()));
                 actualValues.add(transactionType);
+                if (expectedValues.size() > 6) {
+                    actualValues.add(
+                            t.getDetails() != null ? t.getDetails().getTotalOutstanding().setScale(2, RoundingMode.HALF_DOWN).toString()
+                                    : null);
+                }
+                if (expectedValues.size() > 7) {
+                    actualValues.add(t.getDetails() != null
+                            ? t.getDetails().getTotalPrincipalOutstanding().setScale(2, RoundingMode.HALF_DOWN).toString()
+                            : null);
+                }
+                if (expectedValues.size() > 8) {
+                    actualValues.add(t.getDetails() != null
+                            ? t.getDetails().getTotalInterestOutstanding().setScale(2, RoundingMode.HALF_DOWN).toString()
+                            : null);
+                }
+                if (expectedValues.size() > 9) {
+                    actualValues.add(t.getDetails() != null
+                            ? t.getDetails().getTotalFeeChargesOutstanding().setScale(2, RoundingMode.HALF_DOWN).toString()
+                            : null);
+                }
+                if (expectedValues.size() > 10) {
+                    actualValues.add(t.getDetails() != null
+                            ? t.getDetails().getTotalPenaltyChargesOutstanding().setScale(2, RoundingMode.HALF_DOWN).toString()
+                            : null);
+                }
                 actualValues.add(t.getOwner().getExternalId() == null ? null : t.getOwner().getExternalId());
                 actualValues.add(loanId == null ? null : String.valueOf(t.getLoan().getLoanId()));
                 actualValues.add(loanExternalId == null ? null : t.getLoan().getExternalId());
                 actualValues.add(t.getTransferExternalId());
                 return actualValues;
             }).collect(Collectors.toList());
+
+            expectedValues.add(ownerExternalIdStored);
+            expectedValues.add(loanId == null ? null : String.valueOf(loanId));
+            expectedValues.add(loanExternalId);
+            expectedValues.add(transferExternalId);
 
             boolean containsExpectedValues = actualValuesList.stream().anyMatch(actualValues -> actualValues.equals(expectedValues));
 
@@ -381,7 +406,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
 
         String transferExternalId = testContext().get(TestContextKey.ASSET_EXTERNALIZATION_TRANSFER_EXTERNAL_ID_FROM_RESPONSE);
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest()//
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest()//
                 .settlementDate(transferData.get(1))//
                 .transferExternalId(transferExternalId)//
                 .dateFormat(DATE_FORMAT_ASSET_EXT)//
@@ -417,7 +442,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest();
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest();
         if (transferData.get(0).equals(TRANSACTION_TYPE_BUYBACK)) {
             request.settlementDate(transferData.get(1))//
                     .transferExternalId(null)//
@@ -465,7 +490,7 @@ public class AssetExternalizationStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId = loanResponse.body().getLoanId();
 
-        PostInitiateTransferRequest request = new PostInitiateTransferRequest()//
+        ExternalAssetOwnerRequest request = new ExternalAssetOwnerRequest()//
                 .settlementDate(transferData.get(0))//
                 .ownerExternalId(null)//
                 .transferExternalId(null)//

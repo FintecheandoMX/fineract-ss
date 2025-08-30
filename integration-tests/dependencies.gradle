@@ -20,7 +20,7 @@ dependencies {
     // testCompile dependencies are ONLY used in src/test, not src/main.
     // Do NOT repeat dependencies which are ALREADY in implementation or runtimeOnly!
     //
-    tomcat 'org.apache.tomcat:tomcat:10.1.33@zip'
+    tomcat 'org.apache.tomcat:tomcat:10.1.39@zip'
     testImplementation( files("$rootDir/fineract-provider/build/classes/java/main/"),
             project(path: ':fineract-core', configuration: 'runtimeElements'),
             project(path: ':fineract-accounting', configuration: 'runtimeElements'),
@@ -56,6 +56,6 @@ dependencies {
     testImplementation 'org.mapstruct:mapstruct'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    testImplementation 'com.github.tomakehurst:wiremock-standalone'
-    testImplementation 'com.google.guava:guava:32.1.3-jre'
+    testImplementation 'org.wiremock:wiremock-standalone'
+    testImplementation 'com.google.guava:guava'
 }

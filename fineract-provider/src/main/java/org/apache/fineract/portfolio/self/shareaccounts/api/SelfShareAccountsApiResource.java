@@ -42,12 +42,14 @@ import java.util.Collection;
 import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.accounts.api.AccountsApiResource;
 import org.apache.fineract.portfolio.accounts.constants.ShareAccountApiConstants;
 import org.apache.fineract.portfolio.accounts.data.AccountData;
+import org.apache.fineract.portfolio.accounts.data.request.AccountRequest;
 import org.apache.fineract.portfolio.accounts.exceptions.ShareAccountNotFoundException;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
@@ -55,17 +57,20 @@ import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.products.data.ProductData;
 import org.apache.fineract.portfolio.products.service.ShareProductReadPlatformService;
 import org.apache.fineract.portfolio.self.client.service.AppuserClientMapperReadService;
+import org.apache.fineract.portfolio.self.config.SelfServiceModuleIsEnabledCondition;
 import org.apache.fineract.portfolio.self.shareaccounts.data.SelfShareAccountsDataValidator;
 import org.apache.fineract.portfolio.self.shareaccounts.service.AppUserShareAccountsMapperReadPlatformService;
 import org.apache.fineract.portfolio.shareaccounts.data.ShareAccountData;
 import org.apache.fineract.portfolio.shareaccounts.service.ShareAccountReadPlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/self/shareaccounts")
 @Component
 @Tag(name = "Self Share Accounts", description = "")
 @RequiredArgsConstructor
+@Conditional(SelfServiceModuleIsEnabledCondition.class)
 public class SelfShareAccountsApiResource {
 
     private final PlatformSecurityContext context;
@@ -121,12 +126,13 @@ public class SelfShareAccountsApiResource {
             + "minimumActivePeriod, minimumActivePeriodFrequencyType, lockinPeriodFrequency, lockinPeriodFrequencyType.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = SelfShareAccountsApiResourceSwagger.PostNewShareApplicationResponse.class)))) })
-    public String createAccount(final String apiRequestBodyAsJson) {
-        HashMap<String, Object> attr = selfShareAccountsDataValidator.validateShareAccountApplication(apiRequestBodyAsJson);
+    public CommandProcessingResult createAccount(AccountRequest accountRequest) {
+        HashMap<String, Object> attr = selfShareAccountsDataValidator
+                .validateShareAccountApplication(toApiJsonSerializer.serialize(accountRequest));
         final Long clientId = (Long) attr.get(ShareAccountApiConstants.clientid_paramname);
         validateAppuserClientsMapping(clientId);
         String accountType = ShareAccountApiConstants.shareEntityType;
-        return accountsApiResource.createAccount(accountType, apiRequestBodyAsJson);
+        return accountsApiResource.createAccount(accountType, accountRequest);
     }
 
     @GET

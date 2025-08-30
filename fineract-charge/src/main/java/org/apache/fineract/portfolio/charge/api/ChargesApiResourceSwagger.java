@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.charge.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
 import java.util.Set;
 
 /**
@@ -110,6 +111,8 @@ final class ChargesApiResourceSwagger {
         public GetChargesAppliesToResponse chargeAppliesTo;
         public GetChargesCalculationTypeResponse chargeCalculationType;
         public GetChargesPaymentModeResponse chargePaymentMode;
+        public BigDecimal minCap;
+        public BigDecimal maxCap;
     }
 
     @Schema(description = "PostChargesRequest")
@@ -139,6 +142,10 @@ final class ChargesApiResourceSwagger {
         public String monthDayFormat;
         @Schema(example = "false")
         public boolean penalty;
+        @Schema(example = "23.43")
+        public BigDecimal minCap;
+        @Schema(example = "45.56")
+        public BigDecimal maxCap;
     }
 
     @Schema(description = "PostChargesResponse")
@@ -157,6 +164,48 @@ final class ChargesApiResourceSwagger {
 
         @Schema(example = "Loan service fee(changed)")
         public String name;
+        @Schema(example = "1")
+        public Integer chargeAppliesTo;
+        @Schema(example = "USD")
+        public String currencyCode;
+        @Schema(example = "en")
+        public String locale;
+        @Schema(example = "230.56")
+        public Double amount;
+        @Schema(example = "1")
+        public Integer chargeTimeType;
+        @Schema(example = "1")
+        public Integer chargeCalculationType;
+        @Schema(example = "1")
+        public Integer chargePaymentMode;
+        @Schema(example = "true")
+        public boolean active;
+        @Schema(example = "false")
+        public boolean penalty;
+        @Schema(example = "dd MMMM")
+        public String monthDayFormat;
+        @Schema(example = "01 March")
+        public String feeOnMonthDay;
+        @Schema(example = "1")
+        public Integer feeInterval;
+        @Schema(example = "1")
+        public String feeFrequency;
+        @Schema(example = "1")
+        public Integer freeWithdrawalFrequency;
+        @Schema(example = "10")
+        public Integer restartCountFrequency;
+        @Schema(example = "1")
+        public Integer countFrequencyType;
+        @Schema(example = "true")
+        public boolean enableFreeWithdrawalCharge;
+        @Schema(example = "true")
+        public boolean enablePaymentType;
+        @Schema(example = "1")
+        public Long paymentTypeId;
+        @Schema(example = "10.0")
+        public BigDecimal minCap;
+        @Schema(example = "120.0")
+        public BigDecimal maxCap;
     }
 
     @Schema(description = "PutChargesChargeIdResponse")

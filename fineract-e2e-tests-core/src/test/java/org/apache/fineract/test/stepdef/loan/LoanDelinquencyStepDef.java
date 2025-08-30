@@ -39,8 +39,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.fineract.avro.loan.v1.LoanAccountDelinquencyRangeDataV1;
 import org.apache.fineract.avro.loan.v1.LoanInstallmentDelinquencyBucketDataV1;
+import org.apache.fineract.client.models.DelinquencyRangeData;
 import org.apache.fineract.client.models.GetDelinquencyActionsResponse;
-import org.apache.fineract.client.models.GetDelinquencyRangesResponse;
 import org.apache.fineract.client.models.GetDelinquencyTagHistoryResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdDelinquencyPausePeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdDelinquencySummary;
@@ -59,6 +59,7 @@ import org.apache.fineract.test.data.LoanStatus;
 import org.apache.fineract.test.helper.ErrorHelper;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
 import org.apache.fineract.test.helper.ErrorResponse;
+import org.apache.fineract.test.helper.Utils;
 import org.apache.fineract.test.messaging.EventAssertion;
 import org.apache.fineract.test.messaging.event.EventCheckHelper;
 import org.apache.fineract.test.messaging.event.loan.delinquency.LoanDelinquencyRangeChangeEvent;
@@ -108,7 +109,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         String expectedDelinquencyRangeValue = expectedDelinquencyRange.getValue();
 
         String actualDelinquencyRangeValue = DelinquencyRange.NO_DELINQUENCY.value;
-        GetDelinquencyRangesResponse actualDelinquencyRange = loanDetails.body().getDelinquencyRange();
+        DelinquencyRangeData actualDelinquencyRange = loanDetails.body().getDelinquencyRange();
         if (actualDelinquencyRange != null) {
             actualDelinquencyRangeValue = actualDelinquencyRange.getClassification();
         }
@@ -538,7 +539,9 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         String actualDelinquencyRangeValue = loanDetails.body().getDelinquencyRange() == null ? "NO_DELINQUENCY"
                 : loanDetails.body().getDelinquencyRange().getClassification();
         GetLoansLoanIdDelinquencySummary delinquent = loanDetails.body().getDelinquent();
-        List<String> actualValuesList = List.of(actualDelinquencyRangeValue, delinquent.getDelinquentAmount().toString(),
+        String delinquentAmount = delinquent.getDelinquentAmount() == null ? null
+                : new Utils.DoubleFormatter(delinquent.getDelinquentAmount().doubleValue()).format();
+        List<String> actualValuesList = List.of(actualDelinquencyRangeValue, delinquentAmount,
                 delinquent.getDelinquentDate() == null ? "null" : FORMATTER.format(delinquent.getDelinquentDate()),
                 delinquent.getDelinquentDays().toString(), delinquent.getPastDueDays().toString());
 
@@ -640,7 +643,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         long loanId = loanResponse.body().getLoanId();
 
         Response<GetLoansLoanIdResponse> loanDetails = loansApi.retrieveLoan(loanId, false, "", "", "").execute();
-        GetDelinquencyRangesResponse delinquencyRange = loanDetails.body().getDelinquencyRange();
+        DelinquencyRangeData delinquencyRange = loanDetails.body().getDelinquencyRange();
         GetLoansLoanIdDelinquencySummary delinquent = loanDetails.body().getDelinquent();
 
         eventAssertion.assertEvent(LoanDelinquencyRangeChangeEvent.class, loanId)//
@@ -654,7 +657,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
                     Long loanLevelDelinquencyRangeIdExpected = delinquencyRange.getId();
                     String loanLevelDelinquencyRangeExpected = delinquencyRange.getClassification();
                     String loanLevelDelinquentDateExpected = FORMATTER.format(delinquent.getDelinquentDate());
-                    BigDecimal loanLevelTotalAmountExpected = BigDecimal.valueOf(delinquent.getDelinquentAmount());
+                    BigDecimal loanLevelTotalAmountExpected = delinquent.getDelinquentAmount();
 
                     assertThat(loanLevelDelinquencyRangeId)//
                             .as(ErrorMessageHelper.wrongValueInLoanDelinquencyRangeChangeBusinessEvent4(loanLevelDelinquencyRangeId,
@@ -715,7 +718,7 @@ public class LoanDelinquencyStepDef extends AbstractStepDef {
         ErrorHelper.checkSuccessfulApiCall(loanDetails);
 
         Double expectedLastRepaymentAmount1 = Double.valueOf(expectedLastRepaymentAmount);
-        Double actualLastRepaymentAmount = loanDetails.body().getDelinquent().getLastRepaymentAmount();
+        Double actualLastRepaymentAmount = loanDetails.body().getDelinquent().getLastRepaymentAmount().doubleValue();
         String actualLastRepaymentDate = FORMATTER.format(loanDetails.body().getDelinquent().getLastRepaymentDate());
 
         assertThat(actualLastRepaymentAmount)//

@@ -6376,11 +6376,6 @@ GET https://DomainName/api/v1/clients/{clientId}
 						</dd>
 						<dd>Use externalId of clients to restrict results.</dd>
 
-						<dt>sqlSearch</dt>
-						<dd>
-							String <span>optional</span>
-						</dd>
-						<dd>Use an sql fragment valid for the underlying client schema to filter results. e.g. display_name like %K%</dd>
 						<dt>orphansOnly</dt>
 						<dd>
 							Boolean <span>optional</span>, defaults to false
@@ -8336,11 +8331,6 @@ GET https://DomainName/fineract-provider/api/v1/centers/9
 						</dd>
 						<dd>Use externalId of center to restrict results.</dd>
 
-						<dt>sqlSearch</dt>
-						<dd>
-							String <span>optional</span>
-						</dd>
-						<dd>Use an sql fragment valid for the underlying center schema to filter results. e.g. display_name like %K%</dd>
 					</dl>
 					<p>Example Requests:</p>
 					<div class=apiClick>centers</div>
@@ -9771,11 +9761,6 @@ DELETE groups/2
 						</dd>
 						<dd>Use externalId of groups to restrict results.</dd>
 
-						<dt>sqlSearch</dt>
-						<dd>
-							String <span>optional</span>
-						</dd>
-						<dd>Use an sql fragment valid for the underlying group schema to filter results. e.g. display_name like %K%</dd>
 						<dt>orphansOnly</dt>
 						<dd>
 							Boolean <span>optional</span>, defaults to false
@@ -11162,17 +11147,31 @@ GET https://DomainName/api/v1/loans/{loanId}
 						</dd>
 						<dd>Use account no. of loans to restrict results.</dd>
 
+                        <dt>clientId</dt>
+                        <dd>
+                            String <span>optional</span>
+                        </dd>
+                        <dd>Use client ID of loans to restrict results.</dd>
+
+                        <dt>associations</dt>
+                        <dd>String <span>optional,</span>
+                            <span>Comma separated list of recurring loan 'associations' (itemized below).</span>
+                        </dd>
+                        <dd>
+                            <br>
+                                Associations are just extra pieces of data that you might or might not want to retrieve.<br>
+                            <br>
+                        </dd>
+                        <dd>
+                            <b>'summary':</b> Gets loan account summarry related information.
+                        </dd>
+
 						<dt>externalId</dt>
 						<dd>
 							String <span>optional</span>
 						</dd>
 						<dd>Use externalId of loan to restrict results.</dd>
 
-						<dt>sqlSearch</dt>
-						<dd>
-							String <span>optional</span>
-						</dd>
-						<dd>Use an sql fragment valid for the underlying loan schema to filter results. e.g. display_name like %K%</dd>
 					</dl>
 					<p>Example Requests:</p>
 					<div class=apiClick>loans</div>
@@ -36177,11 +36176,6 @@ No Request Body:
                 <dd>Filters for transactions whose entry Date is lesser than or equal to the passed in Date
                 </dd>
 
-                <dt>sqlSearch</dt>
-                <dd>
-                    String <span>optional</span>
-                </dd>
-                <dd>Use an sql fragment valid for the underlying standing instruction schema to filter results. e.g. name like %K%</dd>
             </dl>
 	        <p>Example Requests : </p>
 	        <div class=apiClick>standinginstructionrunhistory</div>
@@ -39429,6 +39423,40 @@ Request body:
 				</div>
 			</div>
 
+            <a id="users_changepwd" name="users_changepwd" class="old-syle-anchor">&nbsp;</a>
+            <div class="method-section">
+                <div class="method-description">
+                    <h4>Change the password of a User</h4>
+                    <p>
+                        <b>Note:</b> When updating a password you must provide the
+                        repeatPassword parameter also.
+                    </p>
+                </div>
+                <div class="method-example">
+                    <code class="method-declaration">
+POST https://DomainName/api/v1/users/{userId)/pwd
+                    </code>
+                    <code class="method-request">
+POST users/3/pwd
+Content-Type: application/json
+Request body:
+{
+    "password": "window75",
+    "repeatPassword": "window75"
+}
+                    </code>
+                    <code class="method-response">
+{
+    "officeId": 1,
+    "resourceId": 3,
+    "changes": {
+        "passwordEncoded": "abc3326b1bb376351c7baeb4175f5e0504e33aadf6a158474a6d71de1befae51"
+    }
+}
+                    </code>
+                </div>
+            </div>
+
 			<a id="users_update" name="users_update" class="old-syle-anchor">&nbsp;</a>
 			<div class="method-section">
 				<div class="method-description">
@@ -39457,8 +39485,7 @@ Request body:
     "officeId": 1,
     "resourceId": 3,
     "changes": {
-        "firstname": "Test",
-        "passwordEncoded": "abc3326b1bb376351c7baeb4175f5e0504e33aadf6a158474a6d71de1befae51"
+        "firstname": "Test"
     }
 }
 					</code>

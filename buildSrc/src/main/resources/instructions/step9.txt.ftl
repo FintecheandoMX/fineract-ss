@@ -27,9 +27,9 @@ Following are the typical things we need to verify before voting on a release ca
 Make sure release artifacts are hosted at https://dist.apache.org/repos/dist/dev/fineract
 
 * Release candidates should be in format apache-fineract-${project['fineract.release.version']}-binary.tar.gz
-* Verify signatures and hashes. You may have to import the public key of the release manager to verify the signatures. (`gpg --recv-key <key id>`)
+* Verify signatures and hashes. You may have to import the public key of the release manager to verify the signatures. (gpg --import KEYS or gpg --recv-key <key id>)
 * Git tag matches the released bits (diff -rf)
-* Can compile successfully from source
+* Can compile docs and code successfully from source
 * Verify DISCLAIMER, NOTICE and LICENSE (year etc)
 * All files have correct headers (Rat check should be clean - gradlew rat)
 * No jar files in the source artifacts

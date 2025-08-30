@@ -41,6 +41,7 @@ import org.apache.fineract.client.models.GetClientsClientIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdDelinquencyPausePeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactions;
+import org.apache.fineract.client.models.GlobalConfigurationPropertyData;
 import org.apache.fineract.client.models.PageExternalTransferData;
 import org.apache.fineract.client.models.PostClientsResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdResponse;
@@ -53,6 +54,7 @@ import org.apache.fineract.test.data.AssetExternalizationTransferStatus;
 import org.apache.fineract.test.data.AssetExternalizationTransferStatusReason;
 import org.apache.fineract.test.data.TransactionType;
 import org.apache.fineract.test.helper.ErrorMessageHelper;
+import org.apache.fineract.test.helper.GlobalConfigurationHelper;
 import org.apache.fineract.test.messaging.EventAssertion;
 import org.apache.fineract.test.messaging.event.assetexternalization.LoanAccountSnapshotEvent;
 import org.apache.fineract.test.messaging.event.assetexternalization.LoanOwnershipTransferEvent;
@@ -90,15 +92,14 @@ public class EventCheckHelper {
 
     @Autowired
     private ClientApi clientApi;
-
     @Autowired
     private LoansApi loansApi;
-
     @Autowired
     private EventAssertion eventAssertion;
-
     @Autowired
     private ExternalAssetOwnersApi externalAssetOwnersApi;
+    @Autowired
+    private GlobalConfigurationHelper configurationHelper;
 
     public void clientEventCheck(Response<PostClientsResponse> clientCreationResponse) throws IOException {
         Response<GetClientsClientIdResponse> clientDetails = clientApi.retrieveOne11(clientCreationResponse.body().getClientId(), false)
@@ -147,7 +148,7 @@ public class EventCheckHelper {
                 .extractingData(loanAccountDataV1 -> loanAccountDataV1.getStatus().getId()).isEqualTo(body.getStatus().getId())//
                 .extractingData(loanAccountDataV1 -> loanAccountDataV1.getStatus().getCode()).isEqualTo(body.getStatus().getCode())//
                 .extractingData(LoanAccountDataV1::getClientId).isEqualTo(Long.valueOf(body.getClientId()))//
-                .extractingBigDecimal(LoanAccountDataV1::getApprovedPrincipal).isEqualTo(BigDecimal.valueOf(body.getApprovedPrincipal()))//
+                .extractingBigDecimal(LoanAccountDataV1::getApprovedPrincipal).isEqualTo(body.getApprovedPrincipal())//
                 .extractingData(loanAccountDataV1 -> loanAccountDataV1.getTimeline().getApprovedOnDate())//
                 .isEqualTo(FORMATTER_EVENTS.format(body.getTimeline().getApprovedOnDate()))//
                 .extractingData(loanAccountDataV1 -> loanAccountDataV1.getSummary().getCurrency().getCode())
@@ -197,8 +198,8 @@ public class EventCheckHelper {
                     Long clientIdActual = loanAccountDataV1.getClientId();
                     Long clientIdExpected = body.getClientId();
                     BigDecimal principalDisbursedActual = loanAccountDataV1.getSummary().getPrincipalDisbursed();
-                    Double principalDisbursedExpectedDouble = body.getSummary().getPrincipalDisbursed();
-                    BigDecimal principalDisbursedExpected = new BigDecimal(principalDisbursedExpectedDouble, MathContext.DECIMAL64);
+                    Double principalDisbursedExpectedDouble = body.getSummary().getPrincipalDisbursed().doubleValue();
+                    BigDecimal principalDisbursedExpected = BigDecimal.valueOf(principalDisbursedExpectedDouble);
                     String actualDisbursementDateActual = loanAccountDataV1.getTimeline().getActualDisbursementDate();
                     String actualDisbursementDateExpected = FORMATTER_EVENTS.format(body.getTimeline().getActualDisbursementDate());
                     String currencyCodeActual = loanAccountDataV1.getSummary().getCurrency().getCode();
@@ -209,7 +210,7 @@ public class EventCheckHelper {
                             .getTotalUnpaidPayableNotDueInterest();
                     BigDecimal totalUnpaidPayableNotDueInterestExpected = body.getSummary().getTotalUnpaidPayableNotDueInterest();
                     BigDecimal totalInterestPaymentWaiverActual = loanAccountDataV1.getSummary().getTotalInterestPaymentWaiver();
-                    Double totalInterestPaymentWaiverExpectedDouble = body.getSummary().getTotalInterestPaymentWaiver();
+                    Double totalInterestPaymentWaiverExpectedDouble = body.getSummary().getTotalInterestPaymentWaiver().doubleValue();
                     BigDecimal totalInterestPaymentWaiverExpected = new BigDecimal(totalInterestPaymentWaiverExpectedDouble,
                             MathContext.DECIMAL64);
                     BigDecimal delinquentInterestActual = loanAccountDataV1.getDelinquent().getDelinquentInterest();
@@ -295,7 +296,7 @@ public class EventCheckHelper {
         eventAssertion.assertEvent(LoanDisbursalTransactionEvent.class, disbursementTransaction.getId())//
                 .extractingData(LoanTransactionDataV1::getLoanId).isEqualTo(body.getId())//
                 .extractingData(LoanTransactionDataV1::getDate).isEqualTo(FORMATTER_EVENTS.format(disbursementTransaction.getDate()))//
-                .extractingBigDecimal(LoanTransactionDataV1::getAmount).isEqualTo(BigDecimal.valueOf(disbursementTransaction.getAmount()));//
+                .extractingBigDecimal(LoanTransactionDataV1::getAmount).isEqualTo(disbursementTransaction.getAmount());//
     }
 
     public EventAssertion.EventAssertionBuilder<LoanTransactionDataV1> transactionEventCheck(
@@ -324,7 +325,7 @@ public class EventCheckHelper {
         EventAssertion.EventAssertionBuilder<LoanTransactionDataV1> eventBuilder = eventAssertion.assertEvent(eventClass, transactionId);
         eventBuilder.extractingData(LoanTransactionDataV1::getLoanId).isEqualTo(loanDetailsResponse.body().getId())//
                 .extractingData(LoanTransactionDataV1::getDate).isEqualTo(FORMATTER_EVENTS.format(transactionFound.getDate()))//
-                .extractingBigDecimal(LoanTransactionDataV1::getAmount).isEqualTo(BigDecimal.valueOf(transactionFound.getAmount()))//
+                .extractingBigDecimal(LoanTransactionDataV1::getAmount).isEqualTo(transactionFound.getAmount())//
                 .extractingData(LoanTransactionDataV1::getExternalOwnerId).isEqualTo(externalOwnerId);//
         return eventBuilder;
     }
@@ -412,14 +413,24 @@ public class EventCheckHelper {
         ExternalTransferData filtered = content.stream().filter(t -> transferId.equals(t.getTransferId())).reduce((first, second) -> second)
                 .orElseThrow(() -> new IllegalStateException("No element found"));
 
+        BigDecimal totalOutstandingBalanceAmountExpected = zeroConversion(filtered.getDetails().getTotalOutstanding());
+        BigDecimal outstandingInterestPortionExpected = zeroConversion(filtered.getDetails().getTotalInterestOutstanding());
+
+        GlobalConfigurationPropertyData outstandingInterestStrategy = configurationHelper
+                .getGlobalConfiguration("outstanding-interest-calculation-strategy-for-external-asset-transfer");
+        if ("PAYABLE_OUTSTANDING_INTEREST".equals(outstandingInterestStrategy.getStringValue())) {
+            Response<GetLoansLoanIdResponse> loanDetails = loansApi.retrieveLoan(loanId, false, "all", null, null).execute();
+            totalOutstandingBalanceAmountExpected = zeroConversion(loanDetails.body().getSummary().getTotalOutstanding());
+            outstandingInterestPortionExpected = zeroConversion(loanDetails.body().getSummary().getInterestOutstanding());
+        }
+
         String ownerExternalIdExpected = filtered.getStatus().getValue().equals("BUYBACK") ? null : filtered.getOwner().getExternalId();
         String settlementDateExpected = filtered.getStatus().getValue().equals("BUYBACK") ? null
                 : FORMATTER_EVENTS.format(filtered.getSettlementDate());
-        BigDecimal totalOutstandingBalanceAmountExpected = zeroConversion(filtered.getDetails().getTotalOutstanding());
         BigDecimal outstandingPrincipalPortionExpected = zeroConversion(filtered.getDetails().getTotalPrincipalOutstanding());
         BigDecimal outstandingFeePortionExpected = zeroConversion(filtered.getDetails().getTotalFeeChargesOutstanding());
         BigDecimal outstandingPenaltyPortionExpected = zeroConversion(filtered.getDetails().getTotalPenaltyChargesOutstanding());
-        BigDecimal outstandingInterestPortionExpected = zeroConversion(filtered.getDetails().getTotalInterestOutstanding());
+
         BigDecimal overPaymentPortionExpected = zeroConversion(filtered.getDetails().getTotalOverpaid());
 
         eventAssertion.assertEvent(LoanAccountSnapshotEvent.class, loanId).extractingData(LoanAccountDataV1::getId).isEqualTo(loanId)

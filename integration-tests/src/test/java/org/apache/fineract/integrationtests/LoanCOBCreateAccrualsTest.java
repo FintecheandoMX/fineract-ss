@@ -33,6 +33,7 @@ import org.apache.fineract.client.models.PostClientsResponse;
 import org.apache.fineract.client.models.PostLoanProductsResponse;
 import org.apache.fineract.client.models.PostLoansLoanIdTransactionsRequest;
 import org.apache.fineract.integrationtests.common.ClientHelper;
+import org.apache.fineract.integrationtests.common.Utils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -468,8 +469,9 @@ public class LoanCOBCreateAccrualsTest extends BaseLoanIntegrationTest {
             GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(loanId);
 
             // No unexpected big accruals or any accrual adjustments
-            Assertions.assertTrue(loanDetails.getTransactions().stream().noneMatch(t -> (t.getType().getAccrual() && t.getAmount() > 0.31)
-                    || "loanTransactionType.accrualAdjustment".equals(t.getType().getCode())));
+            Assertions.assertTrue(
+                    loanDetails.getTransactions().stream().noneMatch(t -> (t.getType().getAccrual() && t.getAmount().doubleValue() > 0.31)
+                            || "loanTransactionType.accrualAdjustment".equals(t.getType().getCode())));
 
             // Accruals around installment due dates are as expected
             validateTransactionsExist(loanDetails, //
@@ -675,8 +677,8 @@ public class LoanCOBCreateAccrualsTest extends BaseLoanIntegrationTest {
             validateTransactionsExist(loanDetails, //
                     transaction(0.30, "Accrual", "19 February 2025", 0.0, 0.0, 0.30, 0.0, 0.0, 0.0, 0.0), //
                     transaction(0.30, "Accrual", "20 February 2025", 0.0, 0.0, 0.30, 0.0, 0.0, 0.0, 0.0), //
-                    transaction(0.23, "Accrual", "21 February 2025", 0.0, 0.0, 0.23, 0.0, 0.0, 0.0, 0.0), //
-                    transaction(0.22, "Accrual", "22 February 2025", 0.0, 0.0, 0.22, 0.0, 0.0, 0.0, 0.0)); //
+                    transaction(0.33, "Accrual", "21 February 2025", 0.0, 0.0, 0.33, 0.0, 0.0, 0.0, 0.0), //
+                    transaction(0.34, "Accrual", "22 February 2025", 0.0, 0.0, 0.34, 0.0, 0.0, 0.0, 0.0)); //
         });
     }
 
@@ -691,18 +693,42 @@ public class LoanCOBCreateAccrualsTest extends BaseLoanIntegrationTest {
 
     private void validateTransactionsExist(GetLoansLoanIdResponse loanDetails, TransactionExt... transactions) {
         Arrays.stream(transactions).forEach(tr -> {
-            boolean found = loanDetails.getTransactions().stream().anyMatch(item -> Objects.equals(item.getAmount(), tr.amount) //
-                    && Objects.equals(item.getType().getValue(), tr.type) //
-                    && Objects.equals(item.getDate(), LocalDate.parse(tr.date, dateTimeFormatter)) //
-                    && Objects.equals(item.getOutstandingLoanBalance(), tr.outstandingPrincipal) //
-                    && Objects.equals(item.getPrincipalPortion(), tr.principalPortion) //
-                    && Objects.equals(item.getInterestPortion(), tr.interestPortion) //
-                    && Objects.equals(item.getFeeChargesPortion(), tr.feePortion) //
-                    && Objects.equals(item.getPenaltyChargesPortion(), tr.penaltyPortion) //
-                    && Objects.equals(item.getOverpaymentPortion(), tr.overpaymentPortion) //
-                    && Objects.equals(item.getUnrecognizedIncomePortion(), tr.unrecognizedPortion) //
+            boolean found = loanDetails.getTransactions().stream()
+                    .anyMatch(item -> Objects.equals(Utils.getDoubleValue(item.getAmount()), tr.amount) //
+                            && Objects.equals(item.getType().getValue(), tr.type) //
+                            && Objects.equals(item.getDate(), LocalDate.parse(tr.date, dateTimeFormatter)) //
+                            && Objects.equals(Utils.getDoubleValue(item.getOutstandingLoanBalance()), tr.outstandingPrincipal) //
+                            && Objects.equals(Utils.getDoubleValue(item.getPrincipalPortion()), tr.principalPortion) //
+                            && Objects.equals(Utils.getDoubleValue(item.getInterestPortion()), tr.interestPortion) //
+                            && Objects.equals(Utils.getDoubleValue(item.getFeeChargesPortion()), tr.feePortion) //
+                            && Objects.equals(Utils.getDoubleValue(item.getPenaltyChargesPortion()), tr.penaltyPortion) //
+                            && Objects.equals(Utils.getDoubleValue(item.getOverpaymentPortion()), tr.overpaymentPortion) //
+                            && Objects.equals(Utils.getDoubleValue(item.getUnrecognizedIncomePortion()), tr.unrecognizedPortion) //
             );
             Assertions.assertTrue(found, "Required transaction not found: " + tr + " on loan " + loanDetails.getId());
+        });
+    }
+
+    @Test
+    public void shouldSkipInterestRecalculationWhenNoOverdueInstallments() {
+        setup();
+        AtomicReference<Long> loanIdRef = new AtomicReference<>();
+        runAt("01 April 2025", () -> {
+            // Create and disburse a loan with a single installment due in the future
+            Long loanId = applyAndApproveProgressiveLoan(client.getClientId(), loanProduct.getResourceId(), "01 April 2025", 100.0, 0.0, 1,
+                    null);
+            loanIdRef.set(loanId);
+            disburseLoan(loanId, BigDecimal.valueOf(100), "01 April 2025");
+        });
+        runAt("02 April 2025", () -> {
+            Long loanId = loanIdRef.get();
+            // No overdue installments: installment due in the future
+            executeInlineCOB(loanId);
+            GetLoansLoanIdResponse loanDetails = loanTransactionHelper.getLoanDetails(loanId);
+            // There should be only the disbursement transaction, no accrual/interest recalculation
+            Assertions.assertEquals(1, loanDetails.getTransactions().size(),
+                    "No interest recalculation/accrual should occur if there are no overdue installments");
+            Assertions.assertEquals("Disbursement", loanDetails.getTransactions().get(0).getType().getValue());
         });
     }
 }

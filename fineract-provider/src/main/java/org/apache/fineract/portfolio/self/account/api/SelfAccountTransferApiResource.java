@@ -43,10 +43,12 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.account.api.AccountTransfersApiResource;
+import org.apache.fineract.portfolio.account.data.request.AccountTransferRequest;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.self.account.data.SelfAccountTemplateData;
 import org.apache.fineract.portfolio.self.account.data.SelfAccountTransferData;
@@ -55,13 +57,16 @@ import org.apache.fineract.portfolio.self.account.exception.BeneficiaryTransferL
 import org.apache.fineract.portfolio.self.account.exception.DailyTPTTransactionAmountLimitExceededException;
 import org.apache.fineract.portfolio.self.account.service.SelfAccountTransferReadService;
 import org.apache.fineract.portfolio.self.account.service.SelfBeneficiariesTPTReadPlatformService;
+import org.apache.fineract.portfolio.self.config.SelfServiceModuleIsEnabledCondition;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/self/accounttransfers")
 @Component
 @Tag(name = "Self Account transfer", description = "")
 @RequiredArgsConstructor
+@Conditional(SelfServiceModuleIsEnabledCondition.class)
 public class SelfAccountTransferApiResource {
 
     private final PlatformSecurityContext context;
@@ -105,13 +110,14 @@ public class SelfAccountTransferApiResource {
             + "\n" + "\n" + "Example Requests:\n" + "\n" + " self/accounttransfers/\n")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = SelfAccountTransferApiResourceSwagger.PostNewTransferResponse.class)))) })
-    public String create(@DefaultValue("") @QueryParam("type") @Parameter(name = "type") final String type,
-            final String apiRequestBodyAsJson) {
+    public CommandProcessingResult create(@DefaultValue("") @QueryParam("type") @Parameter(name = "type") final String type,
+            AccountTransferRequest accountTransferRequest) {
+        final String apiRequestBodyAsJson = toApiJsonSerializer.serialize(accountTransferRequest);
         Map<String, Object> params = this.dataValidator.validateCreate(type, apiRequestBodyAsJson);
         if (type.equals("tpt")) {
             checkForLimits(params);
         }
-        return this.accountTransfersApiResource.create(apiRequestBodyAsJson);
+        return this.accountTransfersApiResource.create(accountTransferRequest);
     }
 
     private void checkForLimits(Map<String, Object> params) {

@@ -550,7 +550,7 @@ public class LoanRepaymentStepDef extends AbstractStepDef {
         BigDecimal lastExpectedAmount = new BigDecimal(totalAmount).setScale(0, RoundingMode.HALF_DOWN);
 
         for (int i = 1; i < periods.size(); i++) {
-            BigDecimal actualAmount = new BigDecimal(periods.get(i).getPrincipalOriginalDue()).setScale(0, RoundingMode.HALF_DOWN);
+            BigDecimal actualAmount = periods.get(i).getPrincipalOriginalDue().setScale(0, RoundingMode.HALF_DOWN);
 
             if (i == periods.size() - 1) {
                 assertThat(actualAmount.compareTo(lastExpectedAmount))
@@ -579,7 +579,7 @@ public class LoanRepaymentStepDef extends AbstractStepDef {
         Response<PostLoansResponse> loanResponse = testContext().get(TestContextKey.LOAN_CREATE_RESPONSE);
         long loanId1 = loanResponse.body().getLoanId();
         Response<GetLoansLoanIdTransactionsTemplateResponse> response = loanTransactionsApi
-                .retrieveTransactionTemplate(loanId1, "prepayLoan", DATE_FORMAT, transactionDate, DEFAULT_LOCALE).execute();
+                .retrieveTransactionTemplate(loanId1, "prepayLoan", DATE_FORMAT, transactionDate, DEFAULT_LOCALE, null).execute();
         Double transactionAmount = response.body().getAmount();
 
         log.debug("%n--- Loan Pay-off with amount: {} ---", transactionAmount);
@@ -613,7 +613,7 @@ public class LoanRepaymentStepDef extends AbstractStepDef {
         eventAssertionBuilder
                 .extractingBigDecimal(
                         loanTransactionAdjustmentDataV1 -> loanTransactionAdjustmentDataV1.getTransactionToAdjust().getAmount())
-                .isEqualTo(BigDecimal.valueOf(targetTransaction.getAmount()));
+                .isEqualTo(targetTransaction.getAmount());
         eventAssertionBuilder
                 .extractingData(
                         loanTransactionAdjustmentDataV1 -> loanTransactionAdjustmentDataV1.getTransactionToAdjust().getManuallyReversed())

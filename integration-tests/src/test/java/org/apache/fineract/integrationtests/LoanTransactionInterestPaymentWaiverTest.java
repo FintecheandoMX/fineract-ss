@@ -41,10 +41,10 @@ import org.apache.fineract.batch.domain.BatchRequest;
 import org.apache.fineract.batch.domain.BatchResponse;
 import org.apache.fineract.client.models.AdvancedPaymentData;
 import org.apache.fineract.client.models.BusinessDateRequest;
+import org.apache.fineract.client.models.ChargeRequest;
 import org.apache.fineract.client.models.GetLoansLoanIdLoanChargeData;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdTransactionsTransactionIdResponse;
-import org.apache.fineract.client.models.PostChargesRequest;
 import org.apache.fineract.client.models.PostChargesResponse;
 import org.apache.fineract.client.models.PostClientsResponse;
 import org.apache.fineract.client.models.PostLoanProductsRequest;
@@ -1619,7 +1619,7 @@ public class LoanTransactionInterestPaymentWaiverTest extends BaseLoanIntegratio
     }
 
     private void chargeFee(Long loanId, Double amount, String dueDate) {
-        PostChargesResponse feeCharge = chargesHelper.createCharges(new PostChargesRequest().penalty(false).amount(9.0)
+        PostChargesResponse feeCharge = chargesHelper.createCharges(new ChargeRequest().penalty(false).amount(9.0)
                 .chargeCalculationType(ChargeCalculationType.FLAT.getValue()).chargeTimeType(ChargeTimeType.SPECIFIED_DUE_DATE.getValue())
                 .chargePaymentMode(ChargePaymentMode.REGULAR.getValue()).currencyCode("USD")
                 .name(Utils.randomStringGenerator("FEE_" + Calendar.getInstance().getTimeInMillis(), 5)).chargeAppliesTo(1).locale("en")
@@ -1632,7 +1632,7 @@ public class LoanTransactionInterestPaymentWaiverTest extends BaseLoanIntegratio
     }
 
     private void chargePenalty(Long loanId, Double amount, String dueDate) {
-        PostChargesResponse penaltyCharge = chargesHelper.createCharges(new PostChargesRequest().penalty(true).amount(10.0)
+        PostChargesResponse penaltyCharge = chargesHelper.createCharges(new ChargeRequest().penalty(true).amount(10.0)
                 .chargeCalculationType(ChargeCalculationType.FLAT.getValue()).chargeTimeType(ChargeTimeType.SPECIFIED_DUE_DATE.getValue())
                 .chargePaymentMode(ChargePaymentMode.REGULAR.getValue()).currencyCode("USD")
                 .name(Utils.randomStringGenerator("PENALTY_" + Calendar.getInstance().getTimeInMillis(), 5)).chargeAppliesTo(1).locale("en")
@@ -1748,19 +1748,19 @@ public class LoanTransactionInterestPaymentWaiverTest extends BaseLoanIntegratio
 
     private static void validateLoanTransaction(GetLoansLoanIdResponse loanDetails, int index, double transactionAmount,
             double principalPortion, double overPaidPortion, double loanBalance) {
-        assertEquals(transactionAmount, loanDetails.getTransactions().get(index).getAmount());
-        assertEquals(principalPortion, loanDetails.getTransactions().get(index).getPrincipalPortion());
-        assertEquals(overPaidPortion, loanDetails.getTransactions().get(index).getOverpaymentPortion());
-        assertEquals(loanBalance, loanDetails.getTransactions().get(index).getOutstandingLoanBalance());
+        assertEquals(transactionAmount, Utils.getDoubleValue(loanDetails.getTransactions().get(index).getAmount()));
+        assertEquals(principalPortion, Utils.getDoubleValue(loanDetails.getTransactions().get(index).getPrincipalPortion()));
+        assertEquals(overPaidPortion, Utils.getDoubleValue(loanDetails.getTransactions().get(index).getOverpaymentPortion()));
+        assertEquals(loanBalance, Utils.getDoubleValue(loanDetails.getTransactions().get(index).getOutstandingLoanBalance()));
     }
 
     private void validateLoanCharge(GetLoansLoanIdResponse loanDetails, int index, LocalDate dueDate, double charged, double paid,
             double outstanding) {
         GetLoansLoanIdLoanChargeData chargeData = loanDetails.getCharges().get(index);
         assertEquals(dueDate, chargeData.getDueDate());
-        assertEquals(charged, chargeData.getAmount());
-        assertEquals(paid, chargeData.getAmountPaid());
-        assertEquals(outstanding, chargeData.getAmountOutstanding());
+        assertEquals(charged, Utils.getDoubleValue(chargeData.getAmount()));
+        assertEquals(paid, Utils.getDoubleValue(chargeData.getAmountPaid()));
+        assertEquals(outstanding, Utils.getDoubleValue(chargeData.getAmountOutstanding()));
     }
 
 }

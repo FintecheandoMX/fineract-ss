@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.sql.DataSource;
 import org.apache.fineract.infrastructure.core.auditing.JpaAuditingHandlerRegistrar;
 import org.apache.fineract.infrastructure.core.domain.AuditorAwareImpl;
 import org.apache.fineract.infrastructure.core.persistence.DatabaseSelectingPersistenceUnitPostProcessor;
@@ -57,7 +58,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 @EnableJpaAuditing
-@EnableJpaRepositories(basePackages = { "org.apache.fineract.**.domain", "org.apache.fineract.**.repository" })
+@EnableJpaRepositories(basePackages = { "org.apache.fineract.**.domain", "org.apache.fineract.**.repository",
+        "org.apache.fineract.command.persistence" })
 @EnableConfigurationProperties(JpaProperties.class)
 @Import(JpaAuditingHandlerRegistrar.class)
 public class JPAConfig extends JpaBaseConfiguration {
@@ -78,14 +80,14 @@ public class JPAConfig extends JpaBaseConfiguration {
     @DependsOn("tenantDatabaseUpgradeService")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder factoryBuilder,
             PersistenceManagedTypes persistenceManagedTypes) {
-        Map<String, Object> vendorProperties = getVendorProperties();
+        Map<String, Object> vendorProperties = getVendorProperties(getDataSource());
         String[] packagesToScan = getPackagesToScan();
         return factoryBuilder.dataSource(getDataSource()).properties(vendorProperties).persistenceUnit("jpa-pu").packages(packagesToScan)
                 .jta(false).build();
     }
 
     @Override
-    protected Map<String, Object> getVendorProperties() {
+    protected Map<String, Object> getVendorProperties(DataSource dataSource) {
         Map<String, Object> vendorProperties = new HashMap<>();
         vendorProperties.put(PersistenceUnitProperties.WEAVING, "static");
         vendorProperties.put(PersistenceUnitProperties.PERSISTENCE_CONTEXT_CLOSE_ON_COMMIT, "true");

@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import org.apache.fineract.client.models.GetDelinquencyBucketsResponse;
+import org.apache.fineract.client.models.DelinquencyBucketData;
 import org.apache.fineract.client.models.GetLoanProductsProductIdResponse;
 import org.apache.fineract.client.models.GetLoansLoanIdRepaymentPeriod;
 import org.apache.fineract.client.models.GetLoansLoanIdResponse;
@@ -75,7 +75,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -110,9 +110,9 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate())));
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
+        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                 && expectedRepaymentDueDate.equals(period.getDueDate())));
     }
 
@@ -121,7 +121,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -157,11 +157,11 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalPaidForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalPaidForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate())));
-        assertEquals(expectedRepaymentAmount, summary.getTotalOutstanding());
-        assertEquals(expectedDownPaymentAmount, summary.getTotalRepaymentTransaction());
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(summary.getTotalOutstanding()));
+        assertEquals(expectedDownPaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
+        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                 && expectedRepaymentDueDate.equals(period.getDueDate())));
     }
 
@@ -170,7 +170,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -205,9 +205,9 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate())));
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
+        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                 && expectedRepaymentDueDate.equals(period.getDueDate())));
     }
 
@@ -216,7 +216,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -253,12 +253,12 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedFirstDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                .anyMatch(period -> expectedFirstDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                         && expectedFirstDownPaymentDueDate.equals(period.getDueDate())));
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedSecondDownPaymentAmount.equals(period.getTotalDueForPeriod())
+                .anyMatch(period -> expectedSecondDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                         && expectedSecondDownPaymentDueDate.equals(period.getDueDate())));
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
+        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                 && expectedRepaymentDueDate.equals(period.getDueDate())));
     }
 
@@ -267,7 +267,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -306,15 +306,15 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         Double expectedTotalRepaymentAmount = expectedFirstDownPaymentAmount + expectedSecondDownPaymentAmount;
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedFirstDownPaymentAmount.equals(period.getTotalPaidForPeriod()) //
+                .anyMatch(period -> expectedFirstDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalPaidForPeriod())) //
                         && expectedFirstDownPaymentDueDate.equals(period.getDueDate())));
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedSecondDownPaymentAmount.equals(period.getTotalPaidForPeriod())
+                .anyMatch(period -> expectedSecondDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalPaidForPeriod()))
                         && expectedSecondDownPaymentDueDate.equals(period.getDueDate())));
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
+        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
                 && expectedRepaymentDueDate.equals(period.getDueDate())));
-        assertEquals(expectedRepaymentAmount, summary.getTotalOutstanding());
-        assertEquals(expectedTotalRepaymentAmount, summary.getTotalRepaymentTransaction());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(summary.getTotalOutstanding()));
+        assertEquals(expectedTotalRepaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
     }
 
     @Test
@@ -322,7 +322,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -363,30 +363,31 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedThirdRepaymentDueDate = LocalDate.of(2022, 12, 3);
         Double outstandingBalanceOnThirdRepayment = 0.00;
 
-        assertEquals(expectedDownPaymentAmount, summary.getTotalRepaymentTransaction());
+        assertEquals(expectedDownPaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
 
         GetLoansLoanIdRepaymentPeriod firstDisbursementPeriod = periods.get(0);
         assertEquals(expectedDownPaymentDueDate, firstDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnDisbursement, firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnDisbursement,
+                Utils.getDoubleValue(firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod firstDownPaymentPeriod = periods.get(1);
-        assertEquals(expectedDownPaymentAmount, firstDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedDownPaymentAmount, Utils.getDoubleValue(firstDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedDownPaymentDueDate, firstDownPaymentPeriod.getDueDate());
 
         GetLoansLoanIdRepaymentPeriod firstRepaymentPeriod = periods.get(2);
-        assertEquals(expectedRepaymentAmount, firstRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(firstRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstRepaymentDueDate, firstRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnFirstRepayment, firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnFirstRepayment, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondRepaymentPeriod = periods.get(3);
-        assertEquals(expectedRepaymentAmount, secondRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(secondRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondRepaymentDueDate, secondRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnSecondRepayment, secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnSecondRepayment, Utils.getDoubleValue(secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod thirdRepaymentPeriod = periods.get(4);
-        assertEquals(expectedRepaymentAmount, thirdRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(thirdRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedThirdRepaymentDueDate, thirdRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnThirdRepayment, thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnThirdRepayment, Utils.getDoubleValue(thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
     }
 
     @Test
@@ -394,7 +395,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -441,38 +442,40 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         Double outstandingBalanceOnThirdRepayment = 0.00;
         Double expectedTotalRepaymentAmount = expectedFirstDownPaymentAmount + expectedSecondDownPaymentAmount;
 
-        assertEquals(expectedTotalRepaymentAmount, summary.getTotalRepaymentTransaction());
+        assertEquals(expectedTotalRepaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
 
         GetLoansLoanIdRepaymentPeriod firstDisbursementPeriod = periods.get(0);
         assertEquals(expectedFirstDownPaymentDueDate, firstDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement, firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement,
+                Utils.getDoubleValue(firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod firstDownPaymentPeriod = periods.get(1);
-        assertEquals(expectedFirstDownPaymentAmount, firstDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedFirstDownPaymentAmount, Utils.getDoubleValue(firstDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstDownPaymentDueDate, firstDownPaymentPeriod.getDueDate());
 
         GetLoansLoanIdRepaymentPeriod secondDisbursementPeriod = periods.get(2);
         assertEquals(expectedSecondDownPaymentDueDate, secondDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement, secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement,
+                Utils.getDoubleValue(secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondDownPaymentPeriod = periods.get(3);
-        assertEquals(expectedSecondDownPaymentAmount, secondDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedSecondDownPaymentAmount, Utils.getDoubleValue(secondDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondDownPaymentDueDate, secondDownPaymentPeriod.getDueDate());
 
         GetLoansLoanIdRepaymentPeriod firstRepaymentPeriod = periods.get(4);
-        assertEquals(expectedRepaymentAmount, firstRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(firstRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstRepaymentDueDate, firstRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnFirstRepayment, firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnFirstRepayment, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondRepaymentPeriod = periods.get(5);
-        assertEquals(expectedRepaymentAmount, secondRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(secondRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondRepaymentDueDate, secondRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnSecondRepayment, secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnSecondRepayment, Utils.getDoubleValue(secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod thirdRepaymentPeriod = periods.get(6);
-        assertEquals(expectedRepaymentAmount, thirdRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(thirdRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedThirdRepaymentDueDate, thirdRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnThirdRepayment, thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnThirdRepayment, Utils.getDoubleValue(thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
     }
 
     @Test
@@ -480,7 +483,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -529,14 +532,14 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate()) //
-                        && Double.valueOf(0.00).equals(period.getFeeChargesDue())));
+                        && Double.valueOf(0.00).equals(Utils.getDoubleValue(period.getFeeChargesDue()))));
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedTotalDueForRepaymentInstallment.equals(period.getTotalDueForPeriod()) //
-                        && expectedRepaymentAmount.equals(period.getPrincipalDue()) //
+                .anyMatch(period -> expectedTotalDueForRepaymentInstallment.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
+                        && expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getPrincipalDue())) //
                         && expectedRepaymentDueDate.equals(period.getDueDate()) //
-                        && feeAmount.equals(period.getFeeChargesDue())));
+                        && feeAmount.equals(Utils.getDoubleValue(period.getFeeChargesDue()))));
     }
 
     @Test
@@ -544,7 +547,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -605,39 +608,41 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         Double outstandingBalanceOnThirdRepayment = 0.00;
         Double expectedTotalRepaymentAmount = expectedFirstDownPaymentAmount + expectedSecondDownPaymentAmount;
 
-        assertEquals(expectedTotalRepaymentAmount, summary.getTotalRepaymentTransaction());
+        assertEquals(expectedTotalRepaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
 
         GetLoansLoanIdRepaymentPeriod firstDisbursementPeriod = periods.get(0);
         assertEquals(expectedFirstDownPaymentDueDate, firstDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement, firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement,
+                Utils.getDoubleValue(firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod firstDownPaymentPeriod = periods.get(1);
-        assertEquals(expectedFirstDownPaymentAmount, firstDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedFirstDownPaymentAmount, Utils.getDoubleValue(firstDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstDownPaymentDueDate, firstDownPaymentPeriod.getDueDate());
 
         GetLoansLoanIdRepaymentPeriod secondDisbursementPeriod = periods.get(2);
         assertEquals(expectedSecondDownPaymentDueDate, secondDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement, secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement,
+                Utils.getDoubleValue(secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondDownPaymentPeriod = periods.get(3);
-        assertEquals(expectedSecondDownPaymentAmount, secondDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedSecondDownPaymentAmount, Utils.getDoubleValue(secondDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondDownPaymentDueDate, secondDownPaymentPeriod.getDueDate());
 
         GetLoansLoanIdRepaymentPeriod firstRepaymentPeriod = periods.get(4);
-        assertEquals(expectedRepaymentAmount, firstRepaymentPeriod.getPrincipalDue());
-        assertEquals(expectedRepaymentTotalDueWithCharge, firstRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalDue()));
+        assertEquals(expectedRepaymentTotalDueWithCharge, Utils.getDoubleValue(firstRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstRepaymentDueDate, firstRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnFirstRepayment, firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnFirstRepayment, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondRepaymentPeriod = periods.get(5);
-        assertEquals(expectedRepaymentAmount, secondRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(secondRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondRepaymentDueDate, secondRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnSecondRepayment, secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnSecondRepayment, Utils.getDoubleValue(secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod thirdRepaymentPeriod = periods.get(6);
-        assertEquals(expectedRepaymentAmount, thirdRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(thirdRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedThirdRepaymentDueDate, thirdRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnThirdRepayment, thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(outstandingBalanceOnThirdRepayment, Utils.getDoubleValue(thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
     }
 
     @Test
@@ -645,7 +650,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -694,16 +699,16 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate()) //
-                        && Double.valueOf(0.00).equals(period.getFeeChargesDue()) //
-                        && Double.valueOf(0.00).equals(period.getInterestDue())));
+                        && Double.valueOf(0.00).equals(Utils.getDoubleValue(period.getFeeChargesDue())) //
+                        && Double.valueOf(0.00).equals(Utils.getDoubleValue(period.getInterestDue()))));
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedTotalDueForRepaymentInstallment.equals(period.getTotalDueForPeriod()) //
-                        && expectedRepaymentAmount.equals(period.getPrincipalDue()) //
+                .anyMatch(period -> expectedTotalDueForRepaymentInstallment.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
+                        && expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getPrincipalDue())) //
                         && expectedRepaymentDueDate.equals(period.getDueDate()) //
-                        && feeAmount.equals(period.getFeeChargesDue()) //
-                        && Double.valueOf(10.0).equals(period.getInterestDue())));
+                        && feeAmount.equals(Utils.getDoubleValue(period.getFeeChargesDue())) //
+                        && Double.valueOf(10.0).equals(Utils.getDoubleValue(period.getInterestDue()))));
     }
 
     @Test
@@ -711,7 +716,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -775,44 +780,46 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         Double outstandingBalanceOnThirdRepayment = 0.00;
         Double expectedTotalRepaymentAmount = expectedFirstDownPaymentAmount + expectedSecondDownPaymentAmount;
 
-        assertEquals(expectedTotalRepaymentAmount, summary.getTotalRepaymentTransaction());
+        assertEquals(expectedTotalRepaymentAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
 
         GetLoansLoanIdRepaymentPeriod firstDisbursementPeriod = periods.get(0);
         assertEquals(expectedFirstDownPaymentDueDate, firstDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement, firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnFirstDisbursement,
+                Utils.getDoubleValue(firstDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod firstDownPaymentPeriod = periods.get(1);
-        assertEquals(expectedFirstDownPaymentAmount, firstDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedFirstDownPaymentAmount, Utils.getDoubleValue(firstDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstDownPaymentDueDate, firstDownPaymentPeriod.getDueDate());
-        assertEquals(expectedDownPaymentInterest, firstDownPaymentPeriod.getInterestDue());
+        assertEquals(expectedDownPaymentInterest, Utils.getDoubleValue(firstDownPaymentPeriod.getInterestDue()));
 
         GetLoansLoanIdRepaymentPeriod secondDisbursementPeriod = periods.get(2);
         assertEquals(expectedSecondDownPaymentDueDate, secondDisbursementPeriod.getDueDate());
-        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement, secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding());
+        assertEquals(expectedOutstandingLoanBalanceOnSecondDisbursement,
+                Utils.getDoubleValue(secondDisbursementPeriod.getPrincipalLoanBalanceOutstanding()));
 
         GetLoansLoanIdRepaymentPeriod secondDownPaymentPeriod = periods.get(3);
-        assertEquals(expectedSecondDownPaymentAmount, secondDownPaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedSecondDownPaymentAmount, Utils.getDoubleValue(secondDownPaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondDownPaymentDueDate, secondDownPaymentPeriod.getDueDate());
-        assertEquals(expectedDownPaymentInterest, secondDownPaymentPeriod.getInterestDue());
+        assertEquals(expectedDownPaymentInterest, Utils.getDoubleValue(secondDownPaymentPeriod.getInterestDue()));
 
         GetLoansLoanIdRepaymentPeriod firstRepaymentPeriod = periods.get(4);
-        assertEquals(expectedRepaymentAmount, firstRepaymentPeriod.getPrincipalDue());
-        assertEquals(expectedRepaymentTotalDueWithChargeAndInterest, firstRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmount, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalDue()));
+        assertEquals(expectedRepaymentTotalDueWithChargeAndInterest, Utils.getDoubleValue(firstRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedFirstRepaymentDueDate, firstRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnFirstRepayment, firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
-        assertEquals(expectedRepaymentInterest, firstRepaymentPeriod.getInterestDue());
+        assertEquals(outstandingBalanceOnFirstRepayment, Utils.getDoubleValue(firstRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
+        assertEquals(expectedRepaymentInterest, Utils.getDoubleValue(firstRepaymentPeriod.getInterestDue()));
 
         GetLoansLoanIdRepaymentPeriod secondRepaymentPeriod = periods.get(5);
-        assertEquals(expectedRepaymentAmountWithInterest, secondRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmountWithInterest, Utils.getDoubleValue(secondRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedSecondRepaymentDueDate, secondRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnSecondRepayment, secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
-        assertEquals(expectedRepaymentInterest, secondRepaymentPeriod.getInterestDue());
+        assertEquals(outstandingBalanceOnSecondRepayment, Utils.getDoubleValue(secondRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
+        assertEquals(expectedRepaymentInterest, Utils.getDoubleValue(secondRepaymentPeriod.getInterestDue()));
 
         GetLoansLoanIdRepaymentPeriod thirdRepaymentPeriod = periods.get(6);
-        assertEquals(expectedRepaymentAmountWithInterest, thirdRepaymentPeriod.getTotalDueForPeriod());
+        assertEquals(expectedRepaymentAmountWithInterest, Utils.getDoubleValue(thirdRepaymentPeriod.getTotalDueForPeriod()));
         assertEquals(expectedThirdRepaymentDueDate, thirdRepaymentPeriod.getDueDate());
-        assertEquals(outstandingBalanceOnThirdRepayment, thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding());
-        assertEquals(expectedRepaymentInterest, thirdRepaymentPeriod.getInterestDue());
+        assertEquals(outstandingBalanceOnThirdRepayment, Utils.getDoubleValue(thirdRepaymentPeriod.getPrincipalLoanBalanceOutstanding()));
+        assertEquals(expectedRepaymentInterest, Utils.getDoubleValue(thirdRepaymentPeriod.getInterestDue()));
     }
 
     @Test
@@ -825,7 +832,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             String loanExternalIdStr = UUID.randomUUID().toString();
 
             final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-            final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+            final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                     delinquencyBucketId);
 
             Boolean enableDownPayment = true;
@@ -864,10 +871,11 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             LocalDate expectedRepaymentDueDate = LocalDate.of(2022, 10, 3);
 
             assertTrue(periods.stream() //
-                    .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalDueForPeriod()) //
+                    .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod())) //
                             && expectedDownPaymentDueDate.equals(period.getDueDate())));
-            assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalDueForPeriod())
-                    && expectedRepaymentDueDate.equals(period.getDueDate())));
+            assertTrue(
+                    periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalDueForPeriod()))
+                            && expectedRepaymentDueDate.equals(period.getDueDate())));
             assertNotNull(loanDetails.getDelinquencyRange());
             assertEquals(2, loanDetails.getDelinquent().getDelinquentDays());
         } finally {
@@ -885,7 +893,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
 
         // Delinquency Bucket
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         // down-payment configuration
@@ -927,7 +935,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
 
         // Delinquency Bucket
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         // down-payment configuration
@@ -1009,7 +1017,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
 
             // Delinquency Bucket
             final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-            final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+            final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                     delinquencyBucketId);
 
             // down-payment configuration
@@ -1058,14 +1066,17 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
 
             // verify installment details
             assertEquals(LocalDate.of(2023, 3, 3), loanDetails.getRepaymentSchedule().getPeriods().get(0).getDueDate());
-            assertEquals(1000.0, loanDetails.getRepaymentSchedule().getPeriods().get(0).getPrincipalLoanBalanceOutstanding());
+            assertEquals(1000.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(0).getPrincipalLoanBalanceOutstanding()));
             assertEquals(1, loanDetails.getRepaymentSchedule().getPeriods().get(1).getPeriod());
             assertEquals(LocalDate.of(2023, 3, 3), loanDetails.getRepaymentSchedule().getPeriods().get(1).getDueDate());
-            assertEquals(250.0, loanDetails.getRepaymentSchedule().getPeriods().get(1).getTotalInstallmentAmountForPeriod());
+            assertEquals(250.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(1).getTotalInstallmentAmountForPeriod()));
             assertEquals(true, loanDetails.getRepaymentSchedule().getPeriods().get(1).getDownPaymentPeriod());
             assertEquals(2, loanDetails.getRepaymentSchedule().getPeriods().get(2).getPeriod());
             assertEquals(LocalDate.of(2023, 4, 2), loanDetails.getRepaymentSchedule().getPeriods().get(2).getDueDate());
-            assertEquals(750.0, loanDetails.getRepaymentSchedule().getPeriods().get(2).getTotalInstallmentAmountForPeriod());
+            assertEquals(750.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(2).getTotalInstallmentAmountForPeriod()));
             assertEquals(false, loanDetails.getRepaymentSchedule().getPeriods().get(2).getDownPaymentPeriod());
 
             // second disbursement
@@ -1078,21 +1089,26 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             loanDetails = loanTransactionHelper.getLoanDetails(loanId.longValue());
             // verify installment details
             assertEquals(LocalDate.of(2023, 3, 3), loanDetails.getRepaymentSchedule().getPeriods().get(0).getDueDate());
-            assertEquals(1000.0, loanDetails.getRepaymentSchedule().getPeriods().get(0).getPrincipalLoanBalanceOutstanding());
+            assertEquals(1000.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(0).getPrincipalLoanBalanceOutstanding()));
             assertEquals(1, loanDetails.getRepaymentSchedule().getPeriods().get(1).getPeriod());
             assertEquals(LocalDate.of(2023, 3, 3), loanDetails.getRepaymentSchedule().getPeriods().get(1).getDueDate());
-            assertEquals(250.0, loanDetails.getRepaymentSchedule().getPeriods().get(1).getTotalInstallmentAmountForPeriod());
+            assertEquals(250.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(1).getTotalInstallmentAmountForPeriod()));
             assertEquals(true, loanDetails.getRepaymentSchedule().getPeriods().get(1).getDownPaymentPeriod());
             assertEquals(LocalDate.of(2023, 3, 5), loanDetails.getRepaymentSchedule().getPeriods().get(2).getDueDate());
-            assertEquals(200.0, loanDetails.getRepaymentSchedule().getPeriods().get(2).getPrincipalLoanBalanceOutstanding());
+            assertEquals(200.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(2).getPrincipalLoanBalanceOutstanding()));
             assertEquals(false, loanDetails.getRepaymentSchedule().getPeriods().get(2).getDownPaymentPeriod());
             assertEquals(2, loanDetails.getRepaymentSchedule().getPeriods().get(3).getPeriod());
             assertEquals(LocalDate.of(2023, 3, 5), loanDetails.getRepaymentSchedule().getPeriods().get(3).getDueDate());
-            assertEquals(50.0, loanDetails.getRepaymentSchedule().getPeriods().get(3).getTotalInstallmentAmountForPeriod());
+            assertEquals(50.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(3).getTotalInstallmentAmountForPeriod()));
             assertEquals(true, loanDetails.getRepaymentSchedule().getPeriods().get(3).getDownPaymentPeriod());
             assertEquals(3, loanDetails.getRepaymentSchedule().getPeriods().get(4).getPeriod());
             assertEquals(LocalDate.of(2023, 4, 2), loanDetails.getRepaymentSchedule().getPeriods().get(4).getDueDate());
-            assertEquals(900.0, loanDetails.getRepaymentSchedule().getPeriods().get(4).getTotalInstallmentAmountForPeriod());
+            assertEquals(900.0,
+                    Utils.getDoubleValue(loanDetails.getRepaymentSchedule().getPeriods().get(4).getTotalInstallmentAmountForPeriod()));
             assertEquals(false, loanDetails.getRepaymentSchedule().getPeriods().get(4).getDownPaymentPeriod());
 
             // verify journal entries for down-payment
@@ -1130,7 +1146,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
 
             // Delinquency Bucket
             final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-            final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+            final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                     delinquencyBucketId);
 
             // down-payment configuration
@@ -1283,7 +1299,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
                     transaction(800.0, "Repayment", "03 March 2023", 0.0, 750.0, 0.0, 0.0, 0.0, 0.0, 50.0) //
             );
             assertTrue(loanDetails.getStatus().getOverpaid());
-            assertEquals(50.0, loanDetails.getTotalOverpaid());
+            assertEquals(50.0, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             // second disbursement
             disbursementDate = LocalDate.of(2023, 3, 5);
@@ -1310,7 +1326,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
                     transaction(20.0, "Disbursement", "05 March 2023", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0) //
             );
             assertTrue(loanDetails.getStatus().getOverpaid());
-            assertEquals(30.0, loanDetails.getTotalOverpaid());
+            assertEquals(30.0, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             loanTransactionHelper.disburseLoan(loanResponse.getResourceId(),
                     new PostLoansLoanIdRequest().actualDisbursementDate("05 March 2023").dateFormat(DATETIME_PATTERN)
@@ -1337,8 +1353,8 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getClosedObligationsMet());
-            assertEquals(0.0, loanDetails.getSummary().getTotalOutstanding());
-            assertEquals(null, loanDetails.getTotalOverpaid());
+            assertEquals(0.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
+            assertEquals(null, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             PostLoansLoanIdTransactionsResponse repayment = loanTransactionHelper.makeLoanRepayment(loanResponse.getResourceId(),
                     new PostLoansLoanIdTransactionsRequest().dateFormat("dd MMMM yyyy").transactionDate("05 March 2023").locale("en")
@@ -1355,7 +1371,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
                     transaction(1.0, "Repayment", "05 March 2023", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0) //
             );
             assertTrue(loanDetails.getStatus().getOverpaid());
-            assertEquals(1.0, loanDetails.getTotalOverpaid());
+            assertEquals(1.0, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             loanTransactionHelper.disburseLoan(loanResponse.getResourceId(),
                     new PostLoansLoanIdRequest().actualDisbursementDate("05 March 2023").dateFormat(DATETIME_PATTERN)
@@ -1386,7 +1402,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getActive());
-            assertEquals(30.0, loanDetails.getSummary().getTotalOutstanding());
+            assertEquals(30.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
 
             loanTransactionHelper.reverseLoanTransaction(repayment.getLoanId(), repayment.getResourceId(),
                     new PostLoansLoanIdTransactionsTransactionIdRequest().dateFormat(DATETIME_PATTERN).transactionDate("05 March 2023")
@@ -1418,7 +1434,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getActive());
-            assertEquals(31.0, loanDetails.getSummary().getTotalOutstanding());
+            assertEquals(31.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
         });
     }
 
@@ -1498,7 +1514,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
                     transaction(800.0, "Repayment", "03 March 2023", 0.0, 750.0, 0.0, 0.0, 0.0, 0.0, 50.0) //
             );
             assertTrue(loanDetails.getStatus().getOverpaid());
-            assertEquals(50.0, loanDetails.getTotalOverpaid());
+            assertEquals(50.0, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             // second disbursement
             disbursementDate = LocalDate.of(2023, 3, 5);
@@ -1525,7 +1541,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
                     transaction(20.0, "Disbursement", "05 March 2023", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0) //
             );
             assertTrue(loanDetails.getStatus().getOverpaid());
-            assertEquals(30.0, loanDetails.getTotalOverpaid());
+            assertEquals(30.0, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             loanTransactionHelper.disburseLoan(loanResponse.getResourceId(),
                     new PostLoansLoanIdRequest().actualDisbursementDate("05 March 2023").dateFormat(DATETIME_PATTERN)
@@ -1552,8 +1568,8 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getClosedObligationsMet());
-            assertEquals(0.0, loanDetails.getSummary().getTotalOutstanding());
-            assertEquals(null, loanDetails.getTotalOverpaid());
+            assertEquals(0.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
+            assertEquals(null, Utils.getDoubleValue(loanDetails.getTotalOverpaid()));
 
             loanTransactionHelper.disburseLoan(loanResponse.getResourceId(),
                     new PostLoansLoanIdRequest().actualDisbursementDate("05 March 2023").dateFormat(DATETIME_PATTERN)
@@ -1583,7 +1599,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getActive());
-            assertEquals(30.0, loanDetails.getSummary().getTotalOutstanding());
+            assertEquals(30.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
 
             loanTransactionHelper.reverseLoanTransaction(loanResponse.getLoanId(), externalId,
                     new PostLoansLoanIdTransactionsTransactionIdRequest().dateFormat(DATETIME_PATTERN).transactionDate("05 March 2023")
@@ -1614,7 +1630,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
             );
 
             assertTrue(loanDetails.getStatus().getActive());
-            assertEquals(830.0, loanDetails.getSummary().getTotalOutstanding());
+            assertEquals(830.0, Utils.getDoubleValue(loanDetails.getSummary().getTotalOutstanding()));
         });
     }
 
@@ -1623,7 +1639,7 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         String loanExternalIdStr = UUID.randomUUID().toString();
 
         final Integer delinquencyBucketId = DelinquencyBucketsHelper.createDelinquencyBucket(requestSpec, responseSpec);
-        final GetDelinquencyBucketsResponse delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
+        final DelinquencyBucketData delinquencyBucket = DelinquencyBucketsHelper.getDelinquencyBucket(requestSpec, responseSpec,
                 delinquencyBucketId);
 
         Boolean enableDownPayment = true;
@@ -1662,12 +1678,13 @@ public class LoanRepaymentScheduleWithDownPaymentTest extends BaseLoanIntegratio
         Double expectedTotalRepaymentTransactionAmount = 0.00;
 
         assertTrue(periods.stream() //
-                .anyMatch(period -> expectedDownPaymentAmount.equals(period.getTotalOutstandingForPeriod()) //
+                .anyMatch(period -> expectedDownPaymentAmount.equals(Utils.getDoubleValue(period.getTotalOutstandingForPeriod())) //
                         && expectedDownPaymentDueDate.equals(period.getDueDate())));
-        assertEquals(expectedTotalOutstandingAmount, summary.getTotalOutstanding());
-        assertEquals(expectedTotalRepaymentTransactionAmount, summary.getTotalRepaymentTransaction());
-        assertTrue(periods.stream().anyMatch(period -> expectedRepaymentAmount.equals(period.getTotalOutstandingForPeriod())
-                && expectedRepaymentDueDate.equals(period.getDueDate())));
+        assertEquals(expectedTotalOutstandingAmount, Utils.getDoubleValue(summary.getTotalOutstanding()));
+        assertEquals(expectedTotalRepaymentTransactionAmount, Utils.getDoubleValue(summary.getTotalRepaymentTransaction()));
+        assertTrue(periods.stream()
+                .anyMatch(period -> expectedRepaymentAmount.equals(Utils.getDoubleValue(period.getTotalOutstandingForPeriod()))
+                        && expectedRepaymentDueDate.equals(period.getDueDate())));
     }
 
     private void checkNoDownPaymentTransaction(final Integer loanID) {
