@@ -155,7 +155,8 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         if (!processLatest || reprocessOnPostConditions) {
             if (loan.isCumulativeSchedule() && loan.isInterestBearingAndInterestRecalculationEnabled()) {
                 loanScheduleService.regenerateRepaymentScheduleWithInterestRecalculation(loan, scheduleGeneratorDTO);
-            } else if (loan.isProgressiveSchedule() && loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy()) {
+            } else if (loan.isProgressiveSchedule() && ((loan.hasChargeOffTransaction() && loan.hasAccelerateChargeOffStrategy())
+                    || loan.hasContractTerminationTransaction())) {
                 loanScheduleService.regenerateRepaymentSchedule(loan, scheduleGeneratorDTO);
             }
             reprocessLoanTransactionsService.reprocessTransactions(loan);
@@ -173,7 +174,10 @@ public class LoanDownPaymentHandlerServiceImpl implements LoanDownPaymentHandler
         if (loan.getLoanProduct().isMultiDisburseLoan()) {
             final BigDecimal totalDisbursed = loan.getDisbursedAmount();
             final BigDecimal totalPrincipalAdjusted = loan.getSummary().getTotalPrincipalAdjustments();
-            final BigDecimal totalPrincipalCredited = totalDisbursed.add(totalPrincipalAdjusted);
+            final BigDecimal totalCapitalizedIncome = loan.getLoanTransactions(LoanTransaction::isCapitalizedIncome).stream()
+                    .filter(LoanTransaction::isNotReversed).map(LoanTransaction::getPrincipalPortion)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            final BigDecimal totalPrincipalCredited = totalDisbursed.add(totalPrincipalAdjusted).add(totalCapitalizedIncome);
             if (totalPrincipalCredited.compareTo(loan.getSummary().getTotalPrincipalRepaid()) < 0
                     && loan.repaymentScheduleDetail().getPrincipal().minus(totalDisbursed).isGreaterThanZero()) {
                 final String errorMessage = "The transaction amount cannot exceed threshold.";

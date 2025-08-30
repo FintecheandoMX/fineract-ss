@@ -24,4 +24,6 @@ import org.apache.fineract.portfolio.loanaccount.serialization.LoanTransactionVa
 public interface ProgressiveLoanTransactionValidator extends LoanTransactionValidator {
 
     void validateCapitalizedIncome(JsonCommand command, Long loanId);
+
+    void validateCapitalizedIncomeAdjustment(JsonCommand command, Long loanId, Long capitalizedIncomeTransactionId);
 }

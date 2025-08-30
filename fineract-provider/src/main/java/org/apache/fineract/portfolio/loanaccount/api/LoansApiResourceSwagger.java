@@ -517,7 +517,11 @@ final class LoansApiResourceSwagger {
 
             public GetLoansLoanIdCurrency currency;
             @Schema(example = "1000000.000000")
+            public BigDecimal totalPrincipal;
+            @Schema(example = "1000000.000000")
             public BigDecimal principalDisbursed;
+            @Schema(example = "1000000.000000")
+            public BigDecimal totalCapitalizedIncome;
             @Schema(example = "0.000000")
             public BigDecimal principalPaid;
             @Schema(example = "0.00")
@@ -726,6 +730,8 @@ final class LoansApiResourceSwagger {
                 public boolean capitalizedIncome;
                 @Schema(example = "false")
                 public boolean capitalizedIncomeAmortization;
+                @Schema(example = "false")
+                public boolean capitalizedIncomeAdjustment;
             }
 
             static final class GetLoansLoanIdPaymentDetailData {

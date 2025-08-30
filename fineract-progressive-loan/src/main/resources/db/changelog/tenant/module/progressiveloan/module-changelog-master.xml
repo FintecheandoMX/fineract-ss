@@ -24,4 +24,5 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
     <!-- Sequence is starting from 5000 to make it easier to move existing liquibase changesets here -->
     <include file="parts/5001_create_progressive_loan_model.xml" relativeToChangelogFile="true"/>
+    <include file="parts/5002_add_contract_termination_transaction.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

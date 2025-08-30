@@ -3831,4 +3831,22 @@ public class CommandWrapperBuilder {
         this.href = "/loans/" + loanId;
         return this;
     }
+
+    public CommandWrapperBuilder capitalizedIncomeAdjustment(final Long loanId, final Long transactionId) {
+        this.actionName = "CAPITALIZEDINCOMEADJUSTMENT";
+        this.entityName = "LOAN";
+        this.entityId = transactionId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "/transactions/" + transactionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder applyContractTermination(final Long loanId) {
+        this.actionName = "CONTRACT_TERMINATION";
+        this.entityName = "LOAN";
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId;
+        return this;
+    }
 }

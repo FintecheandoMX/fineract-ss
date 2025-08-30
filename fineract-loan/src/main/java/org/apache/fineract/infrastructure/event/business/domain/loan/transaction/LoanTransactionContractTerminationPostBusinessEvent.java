@@ -16,16 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.loanaccount.service;
+package org.apache.fineract.infrastructure.event.business.domain.loan.transaction;
 
-import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.springframework.transaction.annotation.Transactional;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransaction;
 
-public interface CapitalizedIncomePlatformService {
+public class LoanTransactionContractTerminationPostBusinessEvent extends LoanTransactionBusinessEvent {
 
-    @Transactional
-    CommandProcessingResult addCapitalizedIncome(Long loanId, JsonCommand command);
+    private static final String TYPE = "LoanTransactionContractTerminationPostBusinessEvent";
 
-    void resetBalance(Long loanId);
+    public LoanTransactionContractTerminationPostBusinessEvent(LoanTransaction value) {
+        super(value);
+    }
+
+    @Override
+    public String getType() {
+        return TYPE;
+    }
 }

@@ -57,9 +57,9 @@ import org.apache.fineract.infrastructure.core.filters.BatchCallHandler;
 import org.apache.fineract.infrastructure.core.filters.BatchFilter;
 import org.apache.fineract.infrastructure.core.filters.BatchRequestPreprocessor;
 import org.apache.fineract.infrastructure.core.persistence.ExtendedJpaTransactionManager;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.NonTransientDataAccessException;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionException;
@@ -90,8 +90,7 @@ public class BatchApiServiceImpl implements BatchApiService {
 
     private final List<BatchRequestPreprocessor> batchPreprocessors;
 
-    @PersistenceContext
-    private final EntityManager entityManager;
+    private EntityManager entityManager;
 
     /**
      * Run each request root step in a separated transaction
@@ -288,8 +287,8 @@ public class BatchApiServiceImpl implements BatchApiService {
      *            the current request node
      * @return {@code BatchResponse} list of the generated batch responses
      */
-    private List<BatchResponse> parentRequestFailedRecursive(@NotNull BatchRequest request, @NotNull BatchRequestNode requestNode,
-            @NotNull BatchResponse response, Long parentId) {
+    private List<BatchResponse> parentRequestFailedRecursive(@NonNull BatchRequest request, @NonNull BatchRequestNode requestNode,
+            @NonNull BatchResponse response, Long parentId) {
         List<BatchResponse> responseList = new ArrayList<>();
         if (parentId == null) { // root
             BatchRequestContextHolder.getEnclosingTransaction().ifPresent(TransactionExecution::setRollbackOnly);
@@ -339,8 +338,8 @@ public class BatchApiServiceImpl implements BatchApiService {
         return response;
     }
 
-    @NotNull
-    private List<BatchResponse> buildErrorResponses(Throwable ex, @NotNull List<BatchResponse> responseList) {
+    @NonNull
+    private List<BatchResponse> buildErrorResponses(Throwable ex, @NonNull List<BatchResponse> responseList) {
         BatchResponse response = responseList.isEmpty() ? null
                 : responseList.stream().filter(e -> e.getStatusCode() == null || e.getStatusCode() != SC_OK).findFirst()
                         .orElse(responseList.get(responseList.size() - 1));
@@ -379,5 +378,10 @@ public class BatchApiServiceImpl implements BatchApiService {
     private BatchResponse buildErrorResponse(Long requestId, Integer statusCode, String body, Set<Header> headers) {
         return new BatchResponse().setRequestId(requestId).setStatusCode(statusCode == null ? SC_INTERNAL_SERVER_ERROR : statusCode)
                 .setBody(body == null ? "Request with id " + requestId + " was erroneous!" : body).setHeaders(headers);
+    }
+
+    @PersistenceContext
+    public void setEntityManager(EntityManager entityManager) {
+        this.entityManager = entityManager;
     }
 }

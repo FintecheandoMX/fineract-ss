@@ -24,12 +24,16 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.loanaccount.repository.LoanCapitalizedIncomeBalanceRepository;
 import org.apache.fineract.portfolio.loanaccount.serialization.LoanTransactionValidator;
+import org.apache.fineract.portfolio.loanaccount.service.CapitalizedIncomeBalanceService;
+import org.apache.fineract.portfolio.loanaccount.service.CapitalizedIncomeBalanceServiceImpl;
 import org.apache.fineract.portfolio.loanaccount.service.CapitalizedIncomePlatformService;
 import org.apache.fineract.portfolio.loanaccount.service.CapitalizedIncomeWritePlatformServiceImpl;
 import org.apache.fineract.portfolio.loanaccount.service.LoanAssembler;
+import org.apache.fineract.portfolio.loanaccount.service.LoanBalanceService;
 import org.apache.fineract.portfolio.loanaccount.service.LoanJournalEntryPoster;
 import org.apache.fineract.portfolio.loanaccount.service.ProgressiveLoanTransactionValidator;
 import org.apache.fineract.portfolio.loanaccount.service.ProgressiveLoanTransactionValidatorImpl;
+import org.apache.fineract.portfolio.loanaccount.service.ReprocessLoanTransactionsService;
 import org.apache.fineract.portfolio.note.service.NoteWritePlatformService;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -45,18 +49,27 @@ public class ProgressiveLoanAccountConfiguration {
             LoanAssembler loanAssembler, LoanTransactionRepository loanTransactionRepository,
             PaymentDetailWritePlatformService paymentDetailWritePlatformService, LoanJournalEntryPoster journalEntryPoster,
             NoteWritePlatformService noteWritePlatformService, ExternalIdFactory externalIdFactory,
-            LoanCapitalizedIncomeBalanceRepository capitalizedIncomeBalanceRepository) {
+            LoanCapitalizedIncomeBalanceRepository capitalizedIncomeBalanceRepository,
+            ReprocessLoanTransactionsService reprocessLoanTransactionsService, LoanBalanceService loanBalanceService) {
         return new CapitalizedIncomeWritePlatformServiceImpl(loanTransactionValidator, loanAssembler, loanTransactionRepository,
                 paymentDetailWritePlatformService, journalEntryPoster, noteWritePlatformService, externalIdFactory,
-                capitalizedIncomeBalanceRepository);
+                capitalizedIncomeBalanceRepository, reprocessLoanTransactionsService, loanBalanceService);
     }
 
     @Bean
     @ConditionalOnMissingBean(ProgressiveLoanTransactionValidator.class)
     public ProgressiveLoanTransactionValidator progressiveLoanTransactionValidator(FromJsonHelper fromApiJsonHelper,
             LoanTransactionValidator loanTransactionValidator, LoanRepositoryWrapper loanRepositoryWrapper,
-            LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository) {
+            LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository,
+            LoanTransactionRepository loanTransactionRepository) {
         return new ProgressiveLoanTransactionValidatorImpl(fromApiJsonHelper, loanTransactionValidator, loanRepositoryWrapper,
-                loanCapitalizedIncomeBalanceRepository);
+                loanCapitalizedIncomeBalanceRepository, loanTransactionRepository);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CapitalizedIncomeBalanceService.class)
+    public CapitalizedIncomeBalanceService capitalizedIncomeBalanceService(
+            LoanCapitalizedIncomeBalanceRepository loanCapitalizedIncomeBalanceRepository) {
+        return new CapitalizedIncomeBalanceServiceImpl(loanCapitalizedIncomeBalanceRepository);
     }
 }
