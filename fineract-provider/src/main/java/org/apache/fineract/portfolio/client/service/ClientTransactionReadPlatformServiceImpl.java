@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Collection;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
@@ -47,6 +48,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
+@Service
 public class ClientTransactionReadPlatformServiceImpl implements ClientTransactionReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -151,6 +154,9 @@ public class ClientTransactionReadPlatformServiceImpl implements ClientTransacti
                 sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
             }
         }
+        log.warn("***************************");
+        log.warn("SQL "+sqlBuilder);
+        log.warn("***************************");
 
         return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), parameters, this.clientTransactionMapper);
     }
